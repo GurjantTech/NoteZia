@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "492953791844",
+    "project_id": "stickynoteversion2",
+    "storage_bucket": "stickynoteversion2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:492953791844:android:d38385ee40f6cd9d7f9e71",
+        "android_client_info": {
+          "package_name": "com.appgurjant.stickynotes"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBLxuTd3druv9FVG4SPYA7Pdi5zDzJKuNw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

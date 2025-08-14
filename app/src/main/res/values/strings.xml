@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">NoteZia</string>
+<!--    <string name="app_name">Noteva</string>-->
+   <!-- <string name="app_name">NoteXa</string>-->
+    <string name="app_subName">Quick, Secure &amp; Smart Notes</string>
+    <string name="tagline1">Your Notes. Your Way. Instantly.</string>
+    <string name="tagline2">Ab Yaad Rakhna Humara Kaam Hai</string>
+    <string name="my_notes">My Notes</string>
+    <string name="onboarding_quote">Every idea, no matter how small, holds the power to become something extraordinary. Don’t let your thoughts slip away — capture them, organize them, and bring clarity to your mind. A simple note today can become tomorrow’s big breakthrough. Whether it’s a fleeting idea, an important task, or a personal reflection, writing it down is the first step toward turning thoughts into action. Start creating your notes now and let your ideas shape your future.</string>
+    <string name="onboarding_quote2">Let’s be honest — your brain is amazing, but it’s not a hard drive! Those genius ideas, random thoughts, and important to-dos deserve a safe place before they vanish into thin air. That’s where your notes come to the rescue. Think of them as little traps for your runaway ideas. So before your next brilliant thought says ‘goodbye forever,’ jot it down and let your future self thank you for being this smart (and organized)</string>
+    <string name="continue_txt">Continue</string>
+    <string name="new_note">New Note</string>
+    <string name="new_note_discrip">Write your thoughts here....</string>
+
+    <string name="permission_required">Permission Required</string>
+    <string name="camera_permission_is_needed_to_proceed_please_allow_the_permission">Camera permission is needed to proceed. Please allow the permission.</string>
+    <string name="open_settings">Open Settings</string>
+    <string name="cancel">Cancel</string>
+</resources>
