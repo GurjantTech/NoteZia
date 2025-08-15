@@ -29,13 +29,25 @@ class AppModule {
     private val Migration_1_2 = object : Migration(1, 2) {
         override fun migrate(database: SupportSQLiteDatabase) {
             try {
-                database.execSQL("ALTER TABLE notes ADD COLUMN contentJson TEXT NOT NULL DEFAULT ''")
-                database.execSQL("ALTER TABLE notes ADD COLUMN noteType TEXT NOT NULL DEFAULT ''")
-                // If table doesn't exist, it will be created with the new schema automatically
+                // Add columns only if they don't exist
+                val cursor = database.query("PRAGMA table_info(notes)")
+                val existingColumns = mutableListOf<String>()
+                while (cursor.moveToNext()) {
+                    existingColumns.add(cursor.getString(cursor.getColumnIndexOrThrow("name")))
+                }
+                cursor.close()
+
+                if (!existingColumns.contains("contentJson")) {
+                    database.execSQL("ALTER TABLE notes ADD COLUMN contentJson TEXT DEFAULT NULL")
+                }
+
+                if (!existingColumns.contains("noteType")) {
+                    database.execSQL("ALTER TABLE notes ADD COLUMN noteType TEXT DEFAULT NULL")
+                }
+
             } catch (e: Exception) {
                 Log.e("Migration", "Error during migration", e)
-                // If anything fails, let Room handle it with fallbackToDestructiveMigration
-                throw e
+                throw e // Let Room handle fallback if migration fails
             }
         }
     }
