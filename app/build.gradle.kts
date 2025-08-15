@@ -19,8 +19,8 @@ android {
         applicationId = "com.appgurjant.stickynotes"
         minSdk = 24
         targetSdk = 36
-        versionCode = 13
-        versionName = "3.0.8"
+        versionCode = 15
+        versionName = "4.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
