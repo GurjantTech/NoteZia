@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NoteZia</string>
+    <string name="app_subName">तेज़, सुरक्षित और स्मार्ट नोट्स</string>
+    <string name="tagline1">आपके नोट्स। आपकी शैली में। तुरंत।</string>
+    <string name="tagline2">अब याद रखना हमारा काम है</string>
+    <string name="my_notes">मेरे नोट्स</string>
+    <string name="onboarding_quote">हर विचार, चाहे कितना भी छोटा क्यों न हो, असाधारण बनने की शक्ति रखता है। अपने विचारों को यूँ ही न जाने दें—उन्हें पकड़ें, व्यवस्थित करें और अपने मन में स्पष्टता लाएँ। आज लिखा गया एक साधारण नोट कल की बड़ी सफलता बन सकता है। चाहे वह कोई क्षणभंगुर विचार हो, कोई महत्वपूर्ण कार्य हो, या कोई व्यक्तिगत चिंतन हो, उसे लिखना विचारों को कार्य में बदलने की दिशा में पहला कदम है। अभी से अपने नोट्स बनाना शुरू करें और अपने विचारों को अपने भविष्य को आकार देने दें।</string>
+    <string name="onboarding_quote2">सच कहूँ तो—आपका दिमाग अद्भुत है, लेकिन यह कोई हार्ड ड्राइव नहीं है! उन शानदार विचारों, बेतरतीब विचारों और ज़रूरी कामों को एक सुरक्षित जगह मिलनी चाहिए, इससे पहले कि वे हवा में गायब हो जाएँ। यहीं पर आपके नोट्स काम आते हैं। इन्हें अपने बेकाबू विचारों के लिए छोटे-छोटे जाल समझें। तो इससे पहले कि आपका अगला शानदार विचार हमेशा के लिए अलविदा कहे, उसे लिख लें और अपने भविष्य के स्व को इस स्मार्ट (और व्यवस्थित) होने के लिए धन्यवाद दें।</string>
+    <string name="continue_txt">जारी रखें</string>
+    <string name="new_note">नया नोट</string>
+    <string name="new_note_discrip">अपने विचार यहाँ लिखें....</string>
+
+    <string name="permission_required">अनुमति आवश्यक</string>
+    <string name="camera_permission_is_needed_to_proceed_please_allow_the_permission">आगे बढ़ने के लिए कैमरे की अनुमति ज़रूरी है। कृपया अनुमति दें।</string>
+    <string name="open_settings">सेटिंग्स खोलें</string>
+    <string name="cancel">रद्द करें</string>
+
+    <string name="app_shield">ऐप शील्ड</string>
+    <string name="my_language">मेरी भाषा</string>
+    <string name="tell_a_friend">किसी दोस्त को बताएँ</string>
+    <string name="love_the_app">क्या आपको ऐप पसंद आया?</string>
+    <string name="security">सुरक्षा</string>
+    <string name="preferences">प्राथमिकताएँ</string>
+    <string name="support">सहायता</string>
+    <string name="settings">सेटिंग्स</string>
+    <string name="search_note_here">यहाँ नोट खोजें...</string>
+    <string name="voice_note">बोलो नोट</string>
+    <string name="check_list">चेक लिस्ट</string>
+    <string name="quick_capture">त्वरित कैप्चर</string>
+    <string name="blank_note">खाली नोट</string>
+    <string name="all">सारे नोट</string>
+    <string name="quick_capture_note">क्विक कैप्चर नोट</string>
+    <string name="description_must_be_at_least_3_characters_long">विवरण कम से कम 3 अक्षरों का होना चाहिए</string>
+    <string name="your_note_space_is_empty_create_your_first_note">आपका नोट खाली है\nअपना पहला नोट बनाएँ।</string>
+    <string name="delete_note">नोट हटाएँ</string>
+    <string name="are_you_sure_you_want_to_delete_this_note">क्या आप वाकई इस नोट को हटाना चाहते हैं?</string>
+    <string name="change_language">भाषा बदलें</string>
+
+    <string-array name="notezia_quotes">
+        <item>"आइडिया आया? नोटज़िया पे लिख डालो!"</item>
+        <item>"छोटी सी सोच, बड़ी बन सकती है - बस लिख लो!"</item>
+        <item>"कल की सफलता, आज का नोट बैन हो सकता है।"</item>
+        <item>"दिल और दिमाग के विचार, सब सुरक्षित यहां।"</item>
+        <item>"सोचो मत, लिखो - बाकी नोटज़िया संभालेगा।"</item>
+        <item>"हर विचार एक जगह का हकदार है - ये है वो जगह!"</item>
+        <item>"जब सोच नया आए, तो तुरंत कब्जा करो।"</item>
+        <item>"लिखना ही जीतना है - से शुरू करें नोटज़िया।"</item>
+        <item>"अपने विचारों को एक्शन में बदलो।"</item>
+        <item>"यहां से शुरू होती है तुम्हारी आइडिया की कहानी।"</item>
+    </string-array>
+</resources>

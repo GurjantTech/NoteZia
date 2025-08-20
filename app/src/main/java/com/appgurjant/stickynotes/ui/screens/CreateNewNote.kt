@@ -63,6 +63,7 @@ import com.appgurjant.stickynotes.AppUtil.currentTime
 import com.appgurjant.stickynotes.R
 import com.appgurjant.stickynotes.components.FullTextInputField
 import com.appgurjant.stickynotes.components.TextInputField
+import com.appgurjant.stickynotes.firebase.FirebaseEvent
 import com.appgurjant.stickynotes.navigation.Screen
 import com.google.gson.Gson
 
@@ -74,20 +75,13 @@ fun CreateNewNote(navController: NavController, noteType: String,voiceNote:Strin
     val viewModel: NoteViewModel = hiltViewModel()
     val context = LocalContext.current
     val noteState = viewModel.noteSaveState.collectAsState().value
-    when (noteState) {
-        is UIState.Loading -> {
-            CircularProgressIndicator()
-        }
 
-        is UIState.Success -> {
+    LaunchedEffect(noteState) {
+       noteState?.let {
+            FirebaseEvent.logEvent(context, FirebaseEvent.noteCreatedSuccessEvent)
             navController.popBackStack(Screen.CreateNewNoteScreen.route, true)
         }
-
-        is UIState.Error -> {
-            Toast.makeText(context, noteState.message, Toast.LENGTH_SHORT).show()
-        }
     }
-
     // UI for creating a new note
     CreateNoteUi(navController, noteType, voiceNote)
 }
@@ -138,15 +132,15 @@ fun CreateNoteUi(navController: NavController, noteType: String,voiceNote:String
                         if (viewModel.noteTitle == "") {
                             viewModel.noteTitle = "Untitled Note"
                         }
-                        when(noteType){
-                            AppEnum.VoiceNote.name, AppEnum.TextNote.name->{
+                        when (noteType) {
+                            AppEnum.VoiceNote.name, AppEnum.TextNote.name -> {
                                 if (noteType == AppEnum.VoiceNote.name) {
-                                    viewModel.noteTitle = "Quick Capture Note"
+                                    viewModel.noteTitle = context.getString(R.string.voice_note)
                                 }
                                 if (viewModel.noteDescription.length < 3) {
                                     Toast.makeText(
                                         context,
-                                        "Description must be at least 3 characters long",
+                                        context.getString(R.string.description_must_be_at_least_3_characters_long),
                                         Toast.LENGTH_SHORT
                                     ).show()
                                     return@clickable
@@ -161,9 +155,9 @@ fun CreateNoteUi(navController: NavController, noteType: String,voiceNote:String
                                 viewModel.saveNote(note)
                             }
 
-                            AppEnum.QrNote.name->{
+                            AppEnum.QrNote.name -> {
                                 if (noteType == AppEnum.QrNote.name) {
-                                    viewModel.noteTitle = "QR Note"
+                                    viewModel.noteTitle = context.getString(R.string.quick_capture)
                                 }
                                 val note = Note(
                                     "",
@@ -175,14 +169,18 @@ fun CreateNoteUi(navController: NavController, noteType: String,voiceNote:String
                                 viewModel.saveNote(note)
                             }
 
-                            AppEnum.CheckList.name->{
+                            AppEnum.CheckList.name -> {
                                 val json = Gson().toJson(checklist)
-                                val note = Note(title = viewModel.noteTitle, description = "", timeStamp = String().currentTime(),
-                                    contentJson = json, noteType = noteType)
+                                val note = Note(
+                                    title = viewModel.noteTitle,
+                                    description = "",
+                                    timeStamp = String().currentTime(),
+                                    contentJson = json,
+                                    noteType = noteType
+                                )
                                 viewModel.saveNote(note)
                             }
                         }
-
 
 
                     },
@@ -195,7 +193,9 @@ fun CreateNoteUi(navController: NavController, noteType: String,voiceNote:String
             viewModel.onTitleChange(it)
         }
         // Current Time
-        Text(String().currentTime(), modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp),
+        Text(String().currentTime(), modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 15.dp),
             fontSize = 14.sp,
             fontFamily = FontFamily(Font(R.font.inter_regular)),
             color = Color.LightGray,

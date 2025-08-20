@@ -1,10 +1,14 @@
 package com.appgurjant.stickynotes.components
 
+import android.app.NotificationManager
 import android.content.Context
 import android.media.MediaPlayer
 import android.media.MediaRecorder
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
@@ -23,9 +27,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -149,14 +150,18 @@ fun OutlinedInputTextField(hint:String){
 
 @Composable
 fun GradientBtn(text:String,onClick:()->Unit) {
-Box(modifier = Modifier.width(100.dp).height(40.dp)
+Box(modifier = Modifier
+    .width(100.dp)
+    .height(40.dp)
     .clip(RoundedCornerShape(40.dp))
-    .background(brush = Brush.linearGradient(
-        colors = listOf(
-            Color(0xFF0171FF), // Vibrant Blue
-            Color(0xFF6EC1FF)  // Light Sky Blue
+    .background(
+        brush = Brush.linearGradient(
+            colors = listOf(
+                Color(0xFF0171FF), // Vibrant Blue
+                Color(0xFF6EC1FF)  // Light Sky Blue
+            )
         )
-    ))
+    )
     .clickable { onClick() },
     contentAlignment = Alignment.Center,
    ){
@@ -182,7 +187,9 @@ fun TextInputField(hint:String, text: String?="", onTextChanged:(String)->Unit){
             disabledIndicatorColor = Color.Transparent //
 
         ),
-        modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 10.dp),
         textStyle = TextStyle(fontFamily = FontFamily(Font(R.font.inter_bold)),
             fontSize = 25.sp, color = Color.Black)
     )
@@ -229,8 +236,9 @@ fun DeleteNoteAlertDialog(
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { onDismiss() },
-            title = { Text("Delete Note", fontFamily = FontFamily(Font(R.font.inter_semibold))) },
-            text = { Text("Are you sure you want to delete this note?",fontFamily = FontFamily(Font(
+            title = { Text(stringResource(R.string.delete_note), fontFamily = FontFamily(Font(R.font.inter_semibold))) },
+            text = { Text(
+                stringResource(R.string.are_you_sure_you_want_to_delete_this_note),fontFamily = FontFamily(Font(
                 R.font.inter_regular))) },
             confirmButton = {
                 TextButton(onClick = {
@@ -267,7 +275,7 @@ fun ToggleFabMenu(onClickedItem:(String)-> Unit ) {
                 AppEnum.QrNote.name to  R.drawable.ic_qr_code ,
 //                AppEnum.Drawing.name to R.drawable.ic_drawing ,
                 AppEnum.CheckList.name to  R.drawable.ic_checklist  ,
-                AppEnum.TextNote.name to R.drawable.ic_text
+                AppEnum.TextNote.name to R.drawable.ic_blank_note
             )
 
             // Show/Hide child buttons with animation
@@ -280,9 +288,10 @@ fun ToggleFabMenu(onClickedItem:(String)-> Unit ) {
                     ExtendedFloatingActionButton(
                         text = {
                            val templable = when(label){
-                                AppEnum.VoiceNote.name-> "Voice Note"
-                                AppEnum.CheckList.name-> "Check List"
-                                AppEnum.QrNote.name-> "Quick Capture"
+                                AppEnum.VoiceNote.name-> stringResource(R.string.voice_note)
+                                AppEnum.CheckList.name-> stringResource(R.string.check_list)
+                                AppEnum.QrNote.name-> stringResource(R.string.quick_capture)
+                                AppEnum.TextNote.name-> stringResource(R.string.blank_note)
                                 else-> label
                             }
                             Text(templable) },
@@ -438,6 +447,7 @@ fun filterChips(
     onFilterChanged: (NoteFilterType) -> Unit
 ) {
     // Horizontal scrollable row for chips
+    val context = LocalContext.current
     SingleRowScrollableContainer(
         modifier = Modifier
             .fillMaxWidth()
@@ -450,7 +460,7 @@ fun filterChips(
                 onClick = { onFilterChanged(filterType) },
                 label = {
                     Text(
-                        filterType.displayName,
+                        filterType.getDisplayName(context ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -488,5 +498,26 @@ private fun SingleRowScrollableContainer(
         ) {
             content()
         }
+    }
+}
+
+
+
+@Composable
+fun getNotificationPermission(onPermissionGranted: (Boolean) -> Unit) {
+
+}
+
+
+fun showToast(context: Context, message: String) {
+    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+}
+
+fun getCurrentAppLanguage(context: Context): String {
+    val locales = context.resources.configuration.locales[0].language
+    return if (!locales.isNullOrEmpty()) {
+        locales?: "en" // fallback to English
+    } else {
+        "en" // default
     }
 }

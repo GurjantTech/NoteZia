@@ -8,8 +8,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.app.data.security.SecureStorage
 import com.app.domain.model.Note
 import com.app.domain.model.StandardResponse
+import com.app.domain.repository.SecureRepository
 import com.app.domain.usecase.AddNoteUseCase
 import com.app.domain.usecase.AllNoteUseCase
 import com.app.domain.usecase.DeleteNoteUseCase
@@ -28,6 +30,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class NoteViewModel @Inject constructor(
+    private val secureStorage: SecureStorage,
     private val addNoteUseCase: AddNoteUseCase,
     private val allNoteUseCase: AllNoteUseCase,
     private val getNoteDetailUseCase: GetNoteDetailFromLocalUseCase,
@@ -37,8 +40,8 @@ class NoteViewModel @Inject constructor(
     var noteTitle by  mutableStateOf("")
     var noteDescription by   mutableStateOf("")
 
-    private val _noteSaveState = MutableStateFlow<UIState>(UIState.Loading)
-    val noteSaveState: StateFlow<UIState> = _noteSaveState
+    private val _noteSaveState = MutableStateFlow<String?>(null)
+    val noteSaveState: StateFlow<String?> = _noteSaveState
 
     private val _getAllNotesFromDB = MutableStateFlow<List<Note>>(emptyList())
     val getAllNotesFromDB: StateFlow<List<Note>> = _getAllNotesFromDB
@@ -51,8 +54,9 @@ class NoteViewModel @Inject constructor(
     val notesDeleteFromLocal: StateFlow<StandardResponse?> = _notesDeleteFromLocal
 
     // Track if content has been modified
-    var isContentModified by   mutableStateOf(false)
+    var isContentModified by mutableStateOf(false)
     var currentContentJson by  mutableStateOf( "")
+
 
 
     fun onTitleChange(newTitle: String) { noteTitle = newTitle }
@@ -62,6 +66,14 @@ class NoteViewModel @Inject constructor(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
 
+    // In NoteViewModel
+    private val _shouldShowWelcomeNotification = MutableStateFlow(secureStorage.isWelcomeNotificationShown())
+    val shouldShowWelcomeNotification: StateFlow<Boolean> = _shouldShowWelcomeNotification.asStateFlow()
+
+    fun setWelcomeNotificationShown(shown: Boolean) {
+        secureStorage.setWelcomeNotificationShown(shown)
+        _shouldShowWelcomeNotification.value = shown
+    }
 
     val filteredNotes = combine(_getAllNotesFromDB, _searchQuery) { notes, query ->
         if (query.isBlank()) {
@@ -78,13 +90,12 @@ class NoteViewModel @Inject constructor(
     fun saveNote(note: Note) {
         Log.d("NoteViewModel", "saveNote: $note")
         viewModelScope.launch() {
-            _noteSaveState.emit(UIState.Loading)
             try {
                 addNoteUseCase(note).collect { it ->
-                    _noteSaveState.value = UIState.Success(it)
+                    _noteSaveState.value = it
                 }
             } catch (e: Exception) {
-                _noteSaveState.value = UIState.Error(e.message.toString())
+                _noteSaveState.value = e.message.toString()
             }
         }
     }
@@ -117,7 +128,6 @@ class NoteViewModel @Inject constructor(
     fun updateNote(note: Note) {
         Log.e("NoteViewModel", "updateNote : "+note)
         viewModelScope.launch() {
-            _noteSaveState.emit(UIState.Loading)
             try {
                 updateNoteDetailFromLocalUseCase(note).collect { it ->
                     _notesUpdateInLocal.value = it
@@ -133,7 +143,6 @@ class NoteViewModel @Inject constructor(
     fun deleteNoteById(noteId: String) {
         if(noteId!=""){
             viewModelScope.launch() {
-                _noteSaveState.emit(UIState.Loading)
                 try {
                     deleteNoteUseCase(noteId.toInt()).collect { it ->
                         _notesDeleteFromLocal.value = it
@@ -149,6 +158,13 @@ class NoteViewModel @Inject constructor(
     fun updateCurrentContentJson(contentJson: String) {
         currentContentJson = contentJson
         isContentModified = true
+    }
+
+    fun setAppPin(pin: String){
+      secureStorage.setManualAppPIN(pin)
+    }
+    fun getPin():String{
+        return secureStorage.getManualAppPIN("").toString()
     }
 
 }

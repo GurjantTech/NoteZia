@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.Flow
 
 
 interface NoteRepository {
-    suspend fun insertNote(note: Note): Flow<UIState>
+    suspend fun insertNote(note: Note): Flow<String>
     suspend fun getAllNotes(): Flow<List<Note>>
     suspend fun getNoteDetailFromLocalById(notedId: String): Flow<Note>
     suspend fun updateNoteDetailInLocal(noted: Note): Flow<StandardResponse>

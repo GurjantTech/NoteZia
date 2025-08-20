@@ -72,6 +72,7 @@ import com.appgurjant.stickynotes.R
 import com.appgurjant.stickynotes.components.DeleteNoteAlertDialog
 import com.appgurjant.stickynotes.components.FullTextInputField
 import com.appgurjant.stickynotes.components.TextInputField
+import com.appgurjant.stickynotes.firebase.FirebaseEvent
 import com.appgurjant.stickynotes.navigation.Screen
 
 import com.google.gson.Gson
@@ -85,10 +86,10 @@ fun NoteDetailScreen(
     noteId: String
 ) {
     val viewModel: NoteViewModel = hiltViewModel()
-
     LaunchedEffect(noteId) {
         viewModel.getNoteById(noteId)
     }
+
     val noteDetail = viewModel.getNotesDetailByIdFromLocal.collectAsState().value
     if (noteDetail != null) {
         Log.e("NoteDetailScreen", "noteType: " + noteDetail.noteType.toString())
@@ -99,35 +100,44 @@ fun NoteDetailScreen(
                 }
             }
         }
-        NoteDetailUi(navController, noteDetail,viewModel)
+        NoteDetailUi(navController, noteDetail, viewModel)
     }
 
 // Update Note response
     val notesUpdateResponse = viewModel.notesUpdateInLocal.collectAsState().value
-    if (notesUpdateResponse != null) {
-        navController.popBackStack(Screen.NoteDetailScreen.route, true)
-    }
 // Delete Note response
     val noteDeleteResponse = viewModel.notesDeleteFromLocal.collectAsState().value
-    if (noteDeleteResponse != null) {
-        val context = LocalContext.current
-        Toast.makeText(context, noteDeleteResponse.message, Toast.LENGTH_SHORT).show()
-        navController.popBackStack(Screen.NoteDetailScreen.route, true)
+    val context = LocalContext.current
+
+    LaunchedEffect(noteDeleteResponse) {
+        noteDeleteResponse?.let {
+            FirebaseEvent.logEvent(context, FirebaseEvent.noteDeletedSuccessEvent)
+            Toast.makeText(context, noteDeleteResponse.message, Toast.LENGTH_SHORT).show()
+            navController.popBackStack(Screen.NoteDetailScreen.route, true)
+        }
     }
+    LaunchedEffect(notesUpdateResponse) {
+        notesUpdateResponse?.let {
+            FirebaseEvent.logEvent(context, FirebaseEvent.noteUpdatedSuccessEvent)
+            navController.popBackStack(Screen.NoteDetailScreen.route, true)
+        }
+    }
+
 
 
     BackHandler {
-         if (noteDetail != null) {
-             val updatedNote = Note(
-                 noteId=noteDetail.noteId,
-                 title = viewModel.noteTitle,
-                 description = viewModel.noteDescription,
-                 timeStamp = String().currentTime(),
-                 contentJson = viewModel.currentContentJson,
-                 noteType = noteDetail.noteType)
-             viewModel.updateNote(updatedNote)
+        if (noteDetail != null) {
+            val updatedNote = Note(
+                noteId = noteDetail.noteId,
+                title = viewModel.noteTitle,
+                description = viewModel.noteDescription,
+                timeStamp = String().currentTime(),
+                contentJson = viewModel.currentContentJson,
+                noteType = noteDetail.noteType
+            )
+            viewModel.updateNote(updatedNote)
 
-         }
+        }
         navController.popBackStack()
     }
 
@@ -135,7 +145,7 @@ fun NoteDetailScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NoteDetailUi(navController: NavController, noteDetail: Note,viewModel: NoteViewModel) {
+fun NoteDetailUi(navController: NavController, noteDetail: Note, viewModel: NoteViewModel) {
     val context = LocalContext.current
     viewModel.onTitleChange(noteDetail.title ?: "")
     viewModel.onDescriptionChange(noteDetail.description ?: "")
@@ -176,7 +186,7 @@ fun NoteDetailUi(navController: NavController, noteDetail: Note,viewModel: NoteV
                             noteDetail,
                             context,
                             viewModel.isContentModified,
-                            viewModel.currentContentJson,navController
+                            viewModel.currentContentJson, navController
                         )
 
                     },
@@ -331,7 +341,8 @@ fun NoteDetailUi(navController: NavController, noteDetail: Note,viewModel: NoteV
                                                 }
                                                 checklist = updatedList.toMutableStateList()
                                                 viewModel.isContentModified = true
-                                                viewModel.currentContentJson = gson.toJson(updatedList)
+                                                viewModel.currentContentJson =
+                                                    gson.toJson(updatedList)
                                             }
                                     )
                                 }
@@ -411,7 +422,7 @@ private fun RowScope.updateNote(
                     noteType = noteDetail.noteType
                 )
                 viewModel.updateNote(updatedNote)
-            }else{
+            } else {
                 navController.popBackStack()
             }
 
@@ -429,5 +440,5 @@ fun PreviewNoteDetail() {
         "This is a sample note description",
         "Monday, 01 Jan 2023, 10:00 AM"
     )
-    NoteDetailUi(rememberNavController(), note,hiltViewModel())
+    NoteDetailUi(rememberNavController(), note, hiltViewModel())
 }

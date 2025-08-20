@@ -19,8 +19,8 @@ android {
         applicationId = "com.appgurjant.stickynotes"
         minSdk = 24
         targetSdk = 36
-        versionCode = 15
-        versionName = "4.0.0"
+        versionCode = 16
+        versionName = "4.0.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -48,6 +48,20 @@ android {
         compose = true
         buildConfig = true
     }
+
+    flavorDimensions("version")
+    productFlavors {
+        create("dev") {
+            dimension = "version"
+            applicationId = "com.appgurjant.stickynotes.dev"
+            versionNameSuffix = "-free"
+
+        }
+        create("prod") {
+            dimension = "version"
+        }
+    }
+
 }
 
 dependencies {
@@ -70,6 +84,7 @@ dependencies {
 
     // Room Database
     implementation(libs.androidx.rooms.runtime)
+
     kapt(libs.androidx.rooms.compiler)
     implementation(libs.androidx.rooms.ktx) // Kotlin Extensions and Coroutines support
 
@@ -87,6 +102,7 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.crashlytics)
     implementation (libs.firebase.analytics)
+    implementation(libs.firebase.messaging)
 // GSON
     implementation(libs.gson)
     // camera
@@ -97,6 +113,20 @@ dependencies {
     implementation(libs.camera.lifecycle)
     implementation(libs.camera.view)
     implementation(libs.lottie.compose)
+
+
+    // security
+    // Security Crypto for encrypted preferences and file storage
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
+    // For encrypted SharedPreferences
+    implementation("androidx.security:security-crypto-ktx:1.1.0-alpha06")
+
+    // For encrypting large files
+    implementation("net.zetetic:android-database-sqlcipher:4.5.4" )
+    implementation("androidx.sqlite:sqlite-ktx:2.3.1")
+
+    implementation(libs.androidx.biometric)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

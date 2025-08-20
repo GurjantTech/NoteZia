@@ -1,5 +1,6 @@
 package com.appgurjant.stickynotes.navigation
 
+import SetPinBottomSheet
 import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
@@ -15,6 +16,8 @@ import com.appgurjant.stickynotes.ui.screens.NoteDetailScreen
 import com.appgurjant.stickynotes.ui.screens.OnboardingScreen
 import com.appgurjant.stickynotes.ui.screens.qrScanner.QrScanScreen
 import com.appgurjant.stickynotes.ui.screens.SplashScreen
+
+import com.appgurjant.stickynotes.ui.screens.settings.SettingScreen
 
 
 @Composable
@@ -37,7 +40,6 @@ fun NoteZyNavGraph(navController:NavHostController){
          val voiceNote = backStackEntry.arguments?.getString("voiceNote").toString()
          Log.e("NoteZyNavGraph", "noteType: $noteType voiceNote: $voiceNote")
          CreateNewNote(navController,noteType,voiceNote)
-
      }
      composable(Screen.NoteDetailScreen.route) { backStackEntry->
          val noteId = backStackEntry.arguments?.getString("noteId").toString()
@@ -46,7 +48,10 @@ fun NoteZyNavGraph(navController:NavHostController){
      composable(Screen.QrScanScreen.route) {
          QrScanScreen(navController)
      }
-
+     composable(Screen.SettingScreen.route) {
+         SettingScreen(navController)
+     }
 
  }
+
 }

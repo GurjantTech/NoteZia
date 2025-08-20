@@ -7,4 +7,8 @@ import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
 class AppApplication : Application() {
+    var instance: AppApplication? = null
+    init {
+        instance = this
+    }
 }

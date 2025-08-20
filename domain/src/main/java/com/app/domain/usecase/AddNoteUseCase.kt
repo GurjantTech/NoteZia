@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.Flow
 
 class AddNoteUseCase(private val repository: NoteRepository) {
 
-    suspend operator fun invoke(note: Note) : Flow<UIState> {
+    suspend operator fun invoke(note: Note) : Flow<String> {
         return repository.insertNote(note)
     }
 }

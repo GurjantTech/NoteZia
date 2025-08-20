@@ -14,14 +14,14 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
 class NoteRepositoryImpl (private val noteDao: NoteDao) : NoteRepository{
-    override suspend fun insertNote(note: Note) : Flow<UIState> {
+    override suspend fun insertNote(note: Note) : Flow<String> {
         val response = noteDao.saveNote(note.toDomainForCreate())
 
       return flow {
           if (response>0) {
-              emit(UIState.Success("Note inserted successfully"))
+              emit("Note inserted successfully")
           } else {
-              emit(UIState.Error("Failed to insert note"))
+              emit("Failed to insert note")
           }
       }
 

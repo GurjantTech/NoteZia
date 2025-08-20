@@ -1,5 +1,6 @@
 package com.appgurjant.stickynotes.di
 
+import KeyStoreManager
 import android.content.Context
 import android.util.Log
 import androidx.room.Room
@@ -9,6 +10,9 @@ import com.app.data.local.NoteDatabase
 import com.app.data.local.dao.NoteDao
 import com.app.data.local.entity.NoteEntity
 import com.app.data.repository.NoteRepositoryImpl
+import com.app.data.repository.SecureRepositoryImpl
+import com.app.data.security.SecureStorage
+import com.app.domain.repository.SecureRepository
 import com.app.domain.repository.NoteRepository
 import com.app.domain.usecase.AddNoteUseCase
 import com.app.domain.usecase.AllNoteUseCase
@@ -61,6 +65,27 @@ class AppModule {
             .fallbackToDestructiveMigration()
             .build()
     }
+
+
+//==========================================================================
+    // In AppModule.kt
+    @Module
+    @InstallIn(SingletonComponent::class)
+    object SecurityModule {
+
+        @Provides
+        @Singleton
+        fun provideSecureStorage(@ApplicationContext context: Context): SecureStorage {
+            return SecureStorage(context)
+        }
+
+        @Provides
+        @Singleton
+        fun provideSecureRepository(secureStorage: SecureStorage): SecureRepository {
+            return SecureRepositoryImpl(secureStorage)
+        }
+    }
+    //==========================================================================
 
     @Provides
     fun provideNoteDao(db: NoteDatabase): NoteDao = db.noteDao()

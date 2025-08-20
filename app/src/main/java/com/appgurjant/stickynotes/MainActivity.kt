@@ -1,12 +1,19 @@
 package com.appgurjant.stickynotes
 
+import android.Manifest
 import android.app.AlertDialog
+import android.hardware.biometrics.BiometricPrompt
+import android.os.Build
 import android.os.Bundle
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.navigation.compose.rememberNavController
+
 import com.appgurjant.stickynotes.navigation.NoteZyNavGraph
+
 import com.appgurjant.stickynotes.ui.theme.NotezyAppTheme
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
 import com.google.android.play.core.install.InstallStateUpdatedListener
@@ -14,6 +21,8 @@ import com.google.android.play.core.install.model.AppUpdateType
 import com.google.android.play.core.install.model.InstallStatus
 import com.google.android.play.core.install.model.UpdateAvailability
 import com.google.firebase.FirebaseApp
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.messaging.FirebaseMessaging
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -30,6 +39,7 @@ class MainActivity : ComponentActivity() {
             showRestartDialog()
         }
     }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         FirebaseApp.initializeApp(this)
@@ -41,6 +51,18 @@ class MainActivity : ComponentActivity() {
             }
         }
         checkForAppUpdate()
+        getFirebaseToken()
+
+
+
+    }
+
+
+    private fun getFirebaseToken() {
+        val token = FirebaseMessaging.getInstance().token
+        token.addOnSuccessListener {
+            Log.e("FirebaseToken:" ,it)
+        }
     }
 
     private fun checkForAppUpdate() {
@@ -83,4 +105,5 @@ class MainActivity : ComponentActivity() {
         appUpdateManager.unregisterListener(listener)
         super.onDestroy()
     }
+
 }

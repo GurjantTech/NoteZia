@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -33,22 +34,16 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.appgurjant.stickynotes.R
 import com.appgurjant.stickynotes.components.GradientBtn
+import com.appgurjant.stickynotes.firebase.FirebaseEvent
 import com.appgurjant.stickynotes.navigation.Screen
 
 @Composable
 fun OnboardingScreen(navController: NavController) {
-    val noteZiaQuotes = listOf(
-        "Idea aaya? NoteZia pe likh daalo!",
-        "Chhoti si soch, badi ban sakti hai – bas likh lo!",
-        "Kal ka success, aaj ka note ban sakta hai.",
-        "Dil aur dimaag ke ideas, sab safe yahan.",
-        "Socho mat, likho – baaki NoteZia sambhalega.",
-        "Har idea deserves ek jagah – yeh hai woh jagah!",
-        "Jab soch naya aaye, turant capture karo.",
-        "Likhna hi jeetna hai – start with NoteZia.",
-        "Apne thoughts ko action mein badlo.",
-        "Yahan se shuru hoti hai tumhari idea ki kahani."
-    )
+    val context = LocalContext.current
+    val noteZiaQuotes = context.resources.getStringArray(R.array.notezia_quotes)
+
+
+
 
     // Store the random quote in remember to prevent recomposition changes
     val randomQuote = remember { noteZiaQuotes.random() }
@@ -105,11 +100,12 @@ fun OnboardingScreen(navController: NavController) {
                 .padding(horizontal = 20.dp, vertical = 50.dp)
         ) {
             GradientBtn(stringResource(R.string.continue_txt)){
-                Log.e("gurjantTrack","Continue")
                 navController.popBackStack(Screen.OnboardingScreen.route, true)
                 navController.navigate("dashboard")
             }
         }
+
+
     }
 }
 
