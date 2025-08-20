@@ -107,11 +107,25 @@ fun SettingScreen(navController: NavController) {
                 ) {
                     /* change language */
                     FirebaseEvent.logEvent(context, FirebaseEvent.changeLanguageEvent)
-                    val packageName = context.packageName
-                    val intent = Intent(Settings.ACTION_APP_LOCALE_SETTINGS)
-                    val uri = Uri.fromParts("package", packageName, null)
-                    intent.data = uri
-                    context.startActivity(intent)
+
+                    try{
+                        val intent = Intent(Settings.ACTION_APP_LOCALE_SETTINGS).apply {
+                            data = Uri.parse("package:${context.packageName}")
+                        }
+
+                        if (intent.resolveActivity(context.packageManager) != null) {
+                            context.startActivity(intent)
+                        } else {
+                            // Fallback → open app settings
+                            val fallbackIntent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = Uri.parse("package:${context.packageName}")
+                            }
+                            context.startActivity(fallbackIntent)
+                        }
+                    }catch (e: Exception){
+                        FirebaseEvent.logExceptionEvent(context, FirebaseEvent.exceptionEvent,e.message.toString())
+                    }
+
                 }
             )
         ),
@@ -153,7 +167,6 @@ fun SettingScreenUi(navController: NavController, categories: List<CategoryItem>
                         imageVector = ImageVector.vectorResource(R.drawable.ic_back),
                         "back",
                         modifier = Modifier
-                            .padding(horizontal = 10.dp)
                             .size(30.dp)
                             .clickable {
                                 navController.popBackStack()
@@ -167,7 +180,7 @@ fun SettingScreenUi(navController: NavController, categories: List<CategoryItem>
         Box(modifier = Modifier.padding(paddingValues),
             ) {
 Column(modifier = Modifier.fillMaxWidth()) {
-    LazyColumn (modifier = Modifier.weight(1f)){
+    LazyColumn (modifier = Modifier.weight(1f).padding(horizontal = 10.dp)){
         categories.forEach { category ->
             item {
                 Text(

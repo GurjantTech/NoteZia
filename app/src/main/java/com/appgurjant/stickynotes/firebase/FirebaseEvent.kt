@@ -5,7 +5,7 @@ import android.util.Log
 
 import com.appgurjant.stickynotes.BuildConfig
 import com.google.firebase.analytics.FirebaseAnalytics
-
+import com.google.firebase.analytics.logEvent
 
 
 object FirebaseEvent {
@@ -18,16 +18,24 @@ object FirebaseEvent {
     val noteDeletedSuccessEvent = "note_deleted"
     val noteUpdatedSuccessEvent = "note_update"
     val changeLanguageEvent = "change_language_clicked"
+
     val appShareEvent = "app_share"
     val appRatingEvent = "app_rate"
+
+    val exceptionEvent = "exception_occurred"
 
     fun logEvent(content: Context,eventName: String) {
         Log.e("gurjantTrack",eventName)
         if(!BuildConfig.DEBUG) {
             FirebaseAnalytics.getInstance(content).logEvent(eventName,null)
         }
-
-
-
+    }
+    fun logExceptionEvent(content: Context,eventName: String,exception: String) {
+        Log.e("gurjantTrack",eventName)
+        if(!BuildConfig.DEBUG) {
+            FirebaseAnalytics.getInstance(content).logEvent(eventName){
+                param("exception",exception)
+            }
+        }
     }
 }

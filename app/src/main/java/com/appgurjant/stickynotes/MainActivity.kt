@@ -81,21 +81,38 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun showRestartDialog() {
+        if (isFinishing || isDestroyed) {
+            return  // Don't show dialog if activity is finishing or destroyed
+        }
         // You can replace this with Jetpack Compose AlertDialog
-        AlertDialog.Builder(this)
-            .setTitle("Update Ready")
-            .setMessage("The new version has been downloaded. Restart to apply?")
-            .setPositiveButton("Restart") { _, _ ->
-                appUpdateManager.completeUpdate()
-            }
-            .setNegativeButton("Later", null)
-            .show()
+        try {
+            AlertDialog.Builder(this)
+                .setTitle("Update Ready")
+                .setMessage("The new version has been downloaded. Restart to apply?")
+                .setPositiveButton("Restart") { _, _ ->
+                    try {
+                        appUpdateManager.completeUpdate()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+                .setNegativeButton("Later", null)
+                .setCancelable(false) // Prevent dismissing by back button
+                .create()
+                .apply {
+                    setCanceledOnTouchOutside(false)
+                    show()
+                }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     override fun onResume() {
         super.onResume()
         appUpdateManager.appUpdateInfo.addOnSuccessListener { appUpdateInfo ->
-            if (appUpdateInfo.installStatus() == InstallStatus.DOWNLOADED) {
+            if (!isFinishing && !isDestroyed &&
+                appUpdateInfo.installStatus() == InstallStatus.DOWNLOADED) {
                 showRestartDialog()
             }
         }
