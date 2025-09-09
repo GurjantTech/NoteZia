@@ -19,8 +19,8 @@ android {
         applicationId = "com.appgurjant.stickynotes"
         minSdk = 24
         targetSdk = 36
-        versionCode = 17
-        versionName = "4.0.2"
+        versionCode = 18
+        versionName = "4.0.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -61,6 +61,7 @@ android {
             dimension = "version"
         }
     }
+
 
 }
 
@@ -103,6 +104,7 @@ dependencies {
     implementation(libs.firebase.crashlytics)
     implementation (libs.firebase.analytics)
     implementation(libs.firebase.messaging)
+    implementation(libs.firebase.perf)
 // GSON
     implementation(libs.gson)
     // camera
@@ -137,4 +139,6 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
 
 
+
 }
+
