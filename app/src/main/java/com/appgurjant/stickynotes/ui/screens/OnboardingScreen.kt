@@ -51,6 +51,7 @@ fun OnboardingScreen(navController: NavController) {
         .fillMaxSize()
         .background(color = colorResource(R.color.white))
     ) {
+
         Column(modifier = Modifier
             .padding(20.dp)
             .systemBarsPadding())
@@ -59,14 +60,6 @@ fun OnboardingScreen(navController: NavController) {
                 stringResource(R.string.app_name),
                 fontFamily = FontFamily(Font(R.font.inter_bold)),
                 fontSize = 40.sp,
-                style = TextStyle(
-                    brush = Brush.linearGradient(
-                       colors = listOf(
-                           Color(0xFF0171FF), // Vibrant Blue
-                           Color(0xFF6EC1FF)  // Light Sky Blue
-                       )
-                    )
-                )
             )
 
             Text(

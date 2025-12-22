@@ -1,12 +1,15 @@
 package com.appgurjant.stickynotes.ui.screens
 
+
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,8 +22,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -51,8 +52,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
@@ -65,19 +66,17 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.app.domain.model.Note
 import com.appgurjant.stickynotes.AppUtil.AppEnum
+import com.appgurjant.stickynotes.AppUtil.NoteFilterType
 import com.appgurjant.stickynotes.AppUtil.currentTime
 import com.appgurjant.stickynotes.AppUtil.userTimeFormat
-
 import com.appgurjant.stickynotes.R
 import com.appgurjant.stickynotes.components.DeleteNoteAlertDialog
-import com.appgurjant.stickynotes.components.FullTextInputField
-import com.appgurjant.stickynotes.components.TextInputField
+import com.appgurjant.stickynotes.components.RichTextEditor
+import com.appgurjant.stickynotes.components.TextFormatting
 import com.appgurjant.stickynotes.firebase.FirebaseEvent
 import com.appgurjant.stickynotes.navigation.Screen
-
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import kotlin.collections.set
 
 
 @Composable
@@ -151,6 +150,16 @@ fun NoteDetailUi(navController: NavController, noteDetail: Note, viewModel: Note
     viewModel.onDescriptionChange(noteDetail.description ?: "")
     var showDeleteDialog by remember { mutableStateOf(false) }
     val focusRequesters = remember { mutableMapOf<Int, FocusRequester>() }
+    
+    // State for text formatting
+    var textFormatting by remember { 
+        mutableStateOf(
+            TextFormatting(
+                fontSize = 16,
+                fontFamily = FontFamily(Font(R.font.inter_regular))
+            )
+        )
+    }
 
 
     DeleteNoteAlertDialog(showDeleteDialog, {
@@ -161,53 +170,84 @@ fun NoteDetailUi(navController: NavController, noteDetail: Note, viewModel: Note
         Log.e("Delete", "Clicked")
     })
 
+    val horizontalPadding = 16.dp
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(10.dp)
             .background(color = Color.White)
             .systemBarsPadding()
     ) {
+        // Header with back button and delete
         Row(
             modifier = Modifier
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .padding(10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         )
         {
             Image(
                 imageVector = ImageVector.vectorResource(R.drawable.ic_back),
-                "back",
+                contentDescription = "back",
                 modifier = Modifier
                     .size(30.dp)
-                    .clickable {
+
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = LocalIndication.current
+                    ) {
                         updateNote(
                             viewModel,
                             noteDetail,
                             context,
                             viewModel.isContentModified,
-                            viewModel.currentContentJson, navController
+                            viewModel.currentContentJson, 
+                            navController
                         )
-
-                    },
-                alignment = Alignment.TopEnd
+                    }
             )
 
             Image(
                 imageVector = ImageVector.vectorResource(R.drawable.ic_delete),
-                "Delete Icon",
+                contentDescription = "Delete",
                 modifier = Modifier
                     .size(30.dp)
-                    .clickable {
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = LocalIndication.current
+                    ) {
                         showDeleteDialog = true
-                    },
-                alignment = Alignment.TopEnd
+                    }
             )
         }
-        noteDetail.title?.let {
-            TextInputField("Untitled", it) {
-                viewModel.onTitleChange(it)
-            }
+        // Title field (simple TextField without formatting)
+        noteDetail.title?.let { title ->
+            TextField(
+                value = title,
+                onValueChange = { viewModel.onTitleChange(it) },
+                placeholder = { 
+                    Text(
+                        "Untitled", 
+                        color = Color.LightGray, 
+                        fontSize = 20.sp,
+                        fontFamily = FontFamily(Font(R.font.inter_regular))
+                    ) 
+                },
+                textStyle = LocalTextStyle.current.merge(
+                    TextStyle(
+                        fontSize = 20.sp,
+                        fontFamily = FontFamily(Font(R.font.inter_regular))
+                    )
+                ),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    disabledContainerColor = Color.Transparent,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent
+                ),
+            )
         }
 
         noteDetail.timeStamp?.let {
@@ -216,7 +256,7 @@ fun NoteDetailUi(navController: NavController, noteDetail: Note, viewModel: Note
                 String().userTimeFormat(it),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 15.dp),
+                    .padding(horizontal = horizontalPadding),
                 fontSize = 14.sp,
                 fontFamily = FontFamily(
                     Font(
@@ -227,32 +267,31 @@ fun NoteDetailUi(navController: NavController, noteDetail: Note, viewModel: Note
             )
         }
 
-        noteDetail.description?.let {
-            if (it.isNotEmpty()) {
-                FullTextInputField(stringResource(R.string.new_note_discrip), it) {
-                    viewModel.onDescriptionChange(it)
-                }
-            }
-        }
+        // Show either RichTextEditor or Checklist based on note type
+        if (noteDetail.noteType == AppEnum.CheckList.name) {
+            noteDetail.contentJson?.let { json ->
+                if (json.isNotEmpty()) {
+                    val gson = Gson()
+                    var checklist by remember {
+                        mutableStateOf(
+                            try {
+                                val type = object : TypeToken<List<ChecklistItem>>() {}.type
+                                gson.fromJson<List<ChecklistItem>>(json, type).toMutableStateList()
+                            } catch (e: Exception) {
+                                mutableStateListOf(ChecklistItem("", false))
+                            }
+                        )
+                    }
+        
+                    // Update the contentJson when checklist changes
+                    LaunchedEffect(checklist) {
+                        viewModel.currentContentJson = gson.toJson(checklist)
+                        viewModel.isContentModified = true
+                    }
 
-        noteDetail.contentJson?.let { json ->
-            if (json.isNotEmpty()) {
-                val gson = Gson()
-                var checklist by remember {
-                    mutableStateOf(
-                        try {
-                            val type = object : TypeToken<List<ChecklistItem>>() {}.type
-                            gson.fromJson<List<ChecklistItem>>(json, type).toMutableStateList()
-                        } catch (e: Exception) {
-                            mutableStateListOf(ChecklistItem("", false))
-                        }
-                    )
-                }
-
-
-                // Now you can use checklistItems
-                if (checklist.isNotEmpty()) {
-                    Column(modifier = Modifier.padding(horizontal = 10.dp)) {
+                    // Now you can use checklistItems
+                    if (checklist.isNotEmpty()) {
+                        Column(modifier = Modifier.padding(horizontal = 10.dp)) {
                         checklist.forEachIndexed { index, item ->
                             val focusRequester = remember { FocusRequester() }
                             LaunchedEffect(Unit) {
@@ -320,14 +359,14 @@ fun NoteDetailUi(navController: NavController, noteDetail: Note, viewModel: Note
                                                 }
                                             }
                                         ),
-                                        colors = TextFieldDefaults.textFieldColors(
-                                            containerColor = Color.Transparent,
+                                        colors = TextFieldDefaults.colors(
+                                            focusedContainerColor = Color.Transparent,
+                                            unfocusedContainerColor = Color.Transparent,
+                                            disabledContainerColor = Color.Transparent,
                                             focusedIndicatorColor = Color.Transparent,
                                             unfocusedIndicatorColor = Color.Transparent,
-                                            disabledIndicatorColor = Color.Transparent,
-                                            // Make sure the cursor and selection colors are visible
-                                            cursorColor = Color.Black,
-                                            selectionColors = TextFieldDefaults.textFieldColors().textSelectionColors
+                                            disabledIndicatorColor = Color.Transparent
+
                                         )
                                     )
                                     Image(
@@ -335,7 +374,10 @@ fun NoteDetailUi(navController: NavController, noteDetail: Note, viewModel: Note
                                         "remove",
                                         modifier = Modifier
                                             .size(20.dp)
-                                            .clickable {
+                                            .clickable(
+                                                interactionSource = remember { MutableInteractionSource() },
+                                                indication = LocalIndication.current
+                                            ) {
                                                 val updatedList = checklist.toMutableList().apply {
                                                     removeAt(index)
                                                 }
@@ -358,7 +400,10 @@ fun NoteDetailUi(navController: NavController, noteDetail: Note, viewModel: Note
                             modifier = Modifier
                                 .padding(10.dp)
                                 .wrapContentWidth()
-                                .clickable {
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = LocalIndication.current
+                                ) {
                                     checklist.add(ChecklistItem("", false))
                                 },
                             verticalAlignment = Alignment.CenterVertically
@@ -377,10 +422,44 @@ fun NoteDetailUi(navController: NavController, noteDetail: Note, viewModel: Note
                             )
                         }
                     }
-                }
+                } else {
+            // Show RichTextEditor for non-checklist notes
+            noteDetail.description?.let { description ->
+                RichTextEditor(
+                    value = description,
+                    onValueChange = { 
+                        viewModel.onDescriptionChange(it)
+                        viewModel.isContentModified = true
+                    },
+                    textFormatting = textFormatting,
+                    onFormatChange = { newFormatting ->
+                        textFormatting = newFormatting
+                        viewModel.isContentModified = true
+                    },
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
-
+                }
+            }
+        } else {
+            // Show RichTextEditor for non-checklist notes
+            noteDetail.description?.let { description ->
+                RichTextEditor(
+                    value = description,
+                    onValueChange = { 
+                        viewModel.onDescriptionChange(it)
+                        viewModel.isContentModified = true
+                    },
+                    textFormatting = textFormatting,
+                    onFormatChange = { newFormatting ->
+                        textFormatting = newFormatting
+                        viewModel.isContentModified = true
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
     }
 }
 

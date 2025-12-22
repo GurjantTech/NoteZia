@@ -14,7 +14,9 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -60,16 +62,17 @@ fun QrScanScreen(navController: NavController) {
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
-                takeCameraPermission{ isPermissionGranted->
-                    if(!isPermissionGranted){
-                        showDialog=true
+                takeCameraPermission { isPermissionGranted ->
+                    if (!isPermissionGranted) {
+                        showDialog = true
                     }
                 }
 
-                if(showDialog){
-                    AlertDialogBox(onDismiss = {
-                        navController.popBackStack()
-                    },
+                if (showDialog) {
+                    AlertDialogBox(
+                        onDismiss = {
+                            navController.popBackStack()
+                        },
                         onConfirm = {
                             val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                             intent.data = Uri.fromParts("package", context.packageName, null)
@@ -97,7 +100,10 @@ fun QrScanScreen(navController: NavController) {
                         .align(Alignment.TopEnd)
                         .padding(20.dp)
                         .size(40.dp)
-                        .clickable {
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = LocalIndication.current
+                        ) {
                             val newMode = if (flashMode == FLASH_MODE_ON)
                                 FLASH_MODE_OFF
                             else
@@ -114,7 +120,6 @@ fun QrScanScreen(navController: NavController) {
         }
     )
 }
-
 
 
 @Composable

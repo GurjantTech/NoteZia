@@ -4,8 +4,10 @@ package com.appgurjant.stickynotes.ui.screens
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -116,7 +118,10 @@ fun CreateNoteUi(navController: NavController, noteType: String,voiceNote:String
                 "back",
                 modifier = Modifier
                     .size(40.dp)
-                    .clickable {
+                    .clickable(
+    interactionSource = remember { MutableInteractionSource() },
+    indication = LocalIndication.current
+) {
                         navController.popBackStack()
                     },
                 alignment = Alignment.TopEnd
@@ -127,7 +132,10 @@ fun CreateNoteUi(navController: NavController, noteType: String,voiceNote:String
                 "note save",
                 modifier = Modifier
                     .size(40.dp)
-                    .clickable {
+                    .clickable(
+    interactionSource = remember { MutableInteractionSource() },
+    indication = LocalIndication.current
+) {
 
                         if (viewModel.noteTitle == "") {
                             viewModel.noteTitle = "Untitled Note"
@@ -268,19 +276,23 @@ fun CreateNoteUi(navController: NavController, noteType: String,voiceNote:String
                                         }
                                     }
                                 ),
-                                colors = TextFieldDefaults.textFieldColors(
-                                    containerColor = Color.Transparent,   // no Background
-                                    focusedIndicatorColor = Color.Transparent, // Remove UnderLine
-                                    unfocusedIndicatorColor = Color.Transparent,// Remove undeline When no focus
-                                    disabledIndicatorColor = Color.Transparent //
-
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent,
+                                    disabledContainerColor = Color.Transparent,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent,
+                                    disabledIndicatorColor = Color.Transparent
                                 ),
                             )
 
                             Image(
                                 Icons.Default.Clear,
                                 "remove",
-                                modifier = Modifier.clickable {
+                                modifier = Modifier.clickable(
+    interactionSource = remember { MutableInteractionSource() },
+    indication = LocalIndication.current
+) {
                                     checklist = checklist.toMutableList().also {
                                         it.removeAt(index)
                                     }
@@ -294,7 +306,10 @@ fun CreateNoteUi(navController: NavController, noteType: String,voiceNote:String
                         modifier = Modifier
                             .padding(10.dp)
                             .wrapContentWidth()
-                            .clickable {
+                            .clickable(
+    interactionSource = remember { MutableInteractionSource() },
+    indication = LocalIndication.current
+) {
                                 checklist = checklist + listOf(ChecklistItem("", false))
                             },
                         verticalAlignment = Alignment.CenterVertically

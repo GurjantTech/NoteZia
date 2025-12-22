@@ -2,7 +2,6 @@ package com.app.domain.repository
 
 import com.app.domain.model.Note
 import com.app.domain.model.StandardResponse
-import com.app.domain.utils.UIState
 import kotlinx.coroutines.flow.Flow
 
 

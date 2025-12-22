@@ -6,44 +6,34 @@ import android.app.Activity
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
 import android.speech.RecognizerIntent
 import android.util.Log
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresPermission
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 
 import androidx.compose.foundation.lazy.itemsIndexed
 
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.ChipColors
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
@@ -61,33 +51,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.colorResource
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat.getSystemService
 
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import com.app.domain.model.Note
 import com.appgurjant.stickynotes.AppUtil.AppEnum
 import com.appgurjant.stickynotes.AppUtil.NoteFilterType
 import com.appgurjant.stickynotes.AppUtil.userTimeFormat
@@ -95,10 +77,9 @@ import com.appgurjant.stickynotes.R
 import com.appgurjant.stickynotes.components.ToggleFabMenu
 import com.appgurjant.stickynotes.components.filterChips
 import com.appgurjant.stickynotes.components.getCurrentAppLanguage
-import com.appgurjant.stickynotes.components.getNotificationPermission
-import com.appgurjant.stickynotes.components.showToast
 import com.appgurjant.stickynotes.firebase.FirebaseEvent
 import com.appgurjant.stickynotes.navigation.Screen
+import com.appgurjant.stickynotes.ui.util.SetStatusBarColor
 
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -113,12 +94,13 @@ fun DashboardScreen(navController: NavController) {
     val noteViewModel: NoteViewModel = hiltViewModel()
     noteViewModel.getAllNotes()
     val context = LocalContext.current
-//    val notes = noteViewModel.getAllNotesFromDB.collectAsState().value
     val shouldShowWelcomeNotification by noteViewModel.shouldShowWelcomeNotification.collectAsState()
 
     Log.e("currentAppLanguage", getCurrentAppLanguage(context))
     val notes by noteViewModel.filteredNotes.collectAsState()
-
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        SetStatusBarColor(color = colorResource(id = R.color.primary), darkIcons = true)
+    }
     val noteList = notes.map {
         NoteType(
             it.noteId ?: "",
@@ -161,7 +143,7 @@ private fun showWelcomeNotification(context: Context, noteViewModel: NoteViewMod
             NotificationManager.IMPORTANCE_HIGH
         )
         channel.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-        val manager =context.getSystemService(NotificationManager::class.java)
+        val manager = context.getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(channel)
     }
     val notification = NotificationCompat.Builder(context, channelId)
@@ -197,7 +179,12 @@ fun DashboardUi(
         if (result.resultCode == Activity.RESULT_OK) {
             val matches = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
             spokenText = matches?.firstOrNull() ?: ""
-            navController.navigate(Screen.CreateNewNoteScreen.passNoteType( AppEnum.VoiceNote.name, spokenText))
+            navController.navigate(
+                Screen.CreateNewNoteScreen.passNoteType(
+                    AppEnum.VoiceNote.name,
+                    spokenText
+                )
+            )
         }
     }
 
@@ -206,43 +193,30 @@ fun DashboardUi(
             focusManager.clearFocus()
         }
     }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(color = colorResource(R.color.white))
+            .background(color = colorResource(R.color.primary))
             .systemBarsPadding()
     ) {
         Column(
             modifier = Modifier
-                .padding(10.dp)
-        ) {
-            Row(modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically) {
-                Text(modifier = Modifier.wrapContentWidth(),
-                    text = stringResource(R.string.my_notes),
-                    fontFamily = FontFamily(Font(R.font.inter_bold)),
-                    fontSize = 30.sp,
-                    color = colorResource(R.color.primary)
-                )
-
-                Image(painter = painterResource(R.drawable.ic_settings),"SettingsIcon",
-                    modifier = Modifier.clickable {
-                       navController.navigate(Screen.SettingScreen.route)
-                    }
-                )
-            }
-
+                .fillMaxSize()
+                .background(color = colorResource(R.color.white))
+        )
+        {
+            // Custom Toolbar
+            WavyToolbar(title = stringResource(R.string.my_notes) ,navController)
 
             // Search bar for filtering notes
             OutlinedCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(10.dp),
-                border = BorderStroke(0.1.dp, Color.LightGray) ,// 👈 Light border
-            ) {
+                border = BorderStroke(0.1.dp, Color.LightGray),// 👈 Light border
+            )
+            {
 
                 TextField(
                     value = searchQuery,
@@ -253,18 +227,20 @@ fun DashboardUi(
                         .fillMaxWidth()
                         .background(Color.White)
                         .focusRequester(focusRequester),
-                    colors = TextFieldDefaults.textFieldColors(
-                        containerColor = Color.Transparent,   // no Background
-                        focusedIndicatorColor = Color.Transparent, // Remove UnderLine
-                        unfocusedIndicatorColor = Color.Transparent, // Remove underline When no focus
-                        disabledIndicatorColor = Color.Transparent // No indicator when disabled
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        disabledContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent
                     ),
                 )
             }
 
-            filterChips(selectedFilter){ it ->
+            filterChips(selectedFilter) { it ->
                 Log.e("DashboardScreen", "Selected filter: $selectedFilter")
-                selectedFilter=it
+                selectedFilter = it
             }
             if (noteList.isNotEmpty()) {
                 filteredNotes = when (selectedFilter) {
@@ -274,8 +250,8 @@ fun DashboardUi(
                     NoteFilterType.VOICE_NOTE -> noteList.filter { it.typeOfNote == AppEnum.VoiceNote.name }
                     else -> noteList // ALL
                 }
-            }else{
-                filteredNotes=noteList
+            } else {
+                filteredNotes = noteList
             }
             if (filteredNotes.size < 1) {
                 Box(
@@ -292,7 +268,7 @@ fun DashboardUi(
                         modifier = Modifier.padding(20.dp)
                     )
                 }
-            }else{
+            } else {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -305,7 +281,10 @@ fun DashboardUi(
                         OutlinedCard(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = LocalIndication.current
+                                ) {
                                     val noteId = filteredNotes[index].noteId
                                     val noteType = filteredNotes[index].typeOfNote.toString()
                                     navController.navigate(
@@ -315,13 +294,15 @@ fun DashboardUi(
                                         )
                                     )
                                 },
-                            border = BorderStroke(0.1.dp, Color.LightGray) ,// 👈 Light border
+                            border = BorderStroke(0.1.dp, Color.LightGray),// 👈 Light border
                             shape = MaterialTheme.shapes.medium,
                         ) {
-                            Column(modifier = Modifier
-                                .background(Color.White)
-                                .fillMaxWidth()
-                                .padding(10.dp)) {
+                            Column(
+                                modifier = Modifier
+                                    .background(Color.White)
+                                    .fillMaxWidth()
+                                    .padding(10.dp)
+                            ) {
                                 Text(
                                     text = note.title,
                                     maxLines = 1,
@@ -336,7 +317,7 @@ fun DashboardUi(
                                     fontFamily = FontFamily(Font(R.font.inter_regular)),
                                 )
                                 note.description.let {
-                                    if(it.isNotEmpty()){
+                                    if (it.isNotEmpty()) {
                                         Text(
                                             text = note.description,
                                             maxLines = 2,
@@ -349,10 +330,14 @@ fun DashboardUi(
 
                                 // Then in your code where you want to convert the JSON:
                                 if (!note.contentJson.isNullOrEmpty()) {
-                                    val checklistItems by produceState(initialValue = emptyList<ChecklistItem>(), note.contentJson) {
+                                    val checklistItems by produceState(
+                                        initialValue = emptyList<ChecklistItem>(),
+                                        note.contentJson
+                                    ) {
                                         value = try {
                                             val gson = Gson()
-                                            val type = object : TypeToken<List<ChecklistItem>>() {}.type
+                                            val type =
+                                                object : TypeToken<List<ChecklistItem>>() {}.type
                                             gson.fromJson(note.contentJson, type)
                                         } catch (e: Exception) {
                                             emptyList()
@@ -364,17 +349,20 @@ fun DashboardUi(
 //                                    val checklistItems: List<ChecklistItem> = gson.fromJson(note.contentJson, type)
                                     // Now you can use checklistItems
                                     if (checklistItems.isNotEmpty()) {
-                                        checklistItems.forEachIndexed { index , item ->
-                                            if(index<2){
+                                        checklistItems.forEachIndexed { index, item ->
+                                            if (index < 2) {
                                                 Row(
                                                     verticalAlignment = Alignment.CenterVertically,
                                                     modifier = Modifier.fillMaxWidth()
                                                 ) {
-                                                    Checkbox(checked = item.checked,
+                                                    Checkbox(
+                                                        checked = item.checked,
                                                         onCheckedChange = { checked ->
                                                             // Create a new list with the updated item
-                                                             checklistItems.mapIndexed { i, listItem ->
-                                                                if (i == index) listItem.copy(checked = checked) else listItem
+                                                            checklistItems.mapIndexed { i, listItem ->
+                                                                if (i == index) listItem.copy(
+                                                                    checked = checked
+                                                                ) else listItem
                                                             }
                                                         }
                                                     )
@@ -385,7 +373,7 @@ fun DashboardUi(
                                                         fontSize = 14.sp,
                                                         textDecoration = if (item.checked) TextDecoration.LineThrough else TextDecoration.None,
                                                         color = if (item.checked) Color.Gray else LocalContentColor.current
-                                                        )
+                                                    )
                                                 }
 
                                             }
@@ -408,7 +396,7 @@ fun DashboardUi(
 
                     when (getCurrentAppLanguage(context)) {
                         "hi" -> {
-                            FirebaseEvent.logEvent(context,FirebaseEvent.VoiceNoteInHindiEvent)
+                            FirebaseEvent.logEvent(context, FirebaseEvent.VoiceNoteInHindiEvent)
 
                             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                                 putExtra(
@@ -420,8 +408,9 @@ fun DashboardUi(
                             }
                             launcher.launch(intent)
                         }
+
                         else -> {
-                            FirebaseEvent.logEvent(context,FirebaseEvent.VoiceNoteInEnglishEvent)
+                            FirebaseEvent.logEvent(context, FirebaseEvent.VoiceNoteInEnglishEvent)
                             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                                 putExtra(
                                     RecognizerIntent.EXTRA_LANGUAGE_MODEL,
@@ -434,29 +423,31 @@ fun DashboardUi(
                         }
                     }
                 }
+
                 AppEnum.Gallery.name -> {
 
                 }
 
                 AppEnum.QrNote.name -> {
-                    FirebaseEvent.logEvent(context,FirebaseEvent.qrNoteEvent)
+                    FirebaseEvent.logEvent(context, FirebaseEvent.qrNoteEvent)
                     navController.navigate(Screen.QrScanScreen.route)
                 }
 
                 AppEnum.CheckList.name -> {
-                    FirebaseEvent.logEvent(context,FirebaseEvent.checkListNoteEvent)
-                    navController.navigate(Screen.CreateNewNoteScreen.passNoteType(  AppEnum.CheckList.name))
+                    FirebaseEvent.logEvent(context, FirebaseEvent.checkListNoteEvent)
+                    navController.navigate(Screen.CreateNewNoteScreen.passNoteType(AppEnum.CheckList.name))
                 }
 
                 AppEnum.TextNote.name -> {
-                    FirebaseEvent.logEvent(context,FirebaseEvent.blankNoteEvent)
-                    navController.navigate(Screen.CreateNewNoteScreen.passNoteType( AppEnum.TextNote.name))
+                    FirebaseEvent.logEvent(context, FirebaseEvent.blankNoteEvent)
+                    navController.navigate(Screen.CreateNewNoteScreen.passNoteType(AppEnum.TextNote.name))
                 }
             }
 
         }
     }
 }
+
 // Preview usage
 @Preview
 @Composable

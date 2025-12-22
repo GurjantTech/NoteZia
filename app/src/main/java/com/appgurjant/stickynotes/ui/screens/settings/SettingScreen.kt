@@ -9,8 +9,10 @@ import android.net.Uri
 import android.provider.Settings
 import android.util.Log
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -168,7 +170,10 @@ fun SettingScreenUi(navController: NavController, categories: List<CategoryItem>
                         "back",
                         modifier = Modifier
                             .size(30.dp)
-                            .clickable {
+                            .clickable(
+    interactionSource = remember { MutableInteractionSource() },
+    indication = LocalIndication.current
+) {
                                 navController.popBackStack()
                             },
                         alignment = Alignment.TopStart
@@ -194,7 +199,10 @@ Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable {
+                        .clickable(
+    interactionSource = remember { MutableInteractionSource() },
+    indication = LocalIndication.current
+) {
                             feature.onClick()
                         }
                         .padding(16.dp),
