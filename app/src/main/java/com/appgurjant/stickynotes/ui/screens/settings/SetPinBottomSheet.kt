@@ -51,7 +51,7 @@ fun SetPinBottomSheet(navController: NavController, updateUserPin:(String)->Unit
                 .padding(16.dp)
         ) {
             Text(
-                text = "Set NoteZia PIN",
+                text = "App PIN",
                 style = MaterialTheme.typography.headlineSmall,
                 modifier = Modifier.padding(bottom = 16.dp)
             )

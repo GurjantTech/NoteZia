@@ -2,6 +2,9 @@ package com.appgurjant.stickynotes
 
 import android.Manifest
 import android.app.AlertDialog
+import android.content.Context
+import android.content.pm.ActivityInfo
+import android.hardware.biometrics.BiometricManager
 import android.hardware.biometrics.BiometricPrompt
 import android.os.Build
 import android.os.Bundle
@@ -10,11 +13,14 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.core.content.ContextCompat
 import androidx.navigation.compose.rememberNavController
 
 import com.appgurjant.stickynotes.navigation.NoteZyNavGraph
 
 import com.appgurjant.stickynotes.ui.theme.NotezyAppTheme
+import com.google.android.gms.ads.MobileAds
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
 import com.google.android.play.core.install.InstallStateUpdatedListener
 import com.google.android.play.core.install.model.AppUpdateType
@@ -44,12 +50,15 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         FirebaseApp.initializeApp(this)
         enableEdgeToEdge()
+        requestedOrientation =  ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+
         setContent {
             NotezyAppTheme{
                 val navController = rememberNavController()
                 NoteZyNavGraph(navController)
             }
         }
+        MobileAds.initialize(this)
         checkForAppUpdate()
         getFirebaseToken()
 

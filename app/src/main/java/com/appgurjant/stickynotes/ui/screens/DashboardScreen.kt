@@ -51,11 +51,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
@@ -79,7 +81,9 @@ import com.appgurjant.stickynotes.components.filterChips
 import com.appgurjant.stickynotes.components.getCurrentAppLanguage
 import com.appgurjant.stickynotes.firebase.FirebaseEvent
 import com.appgurjant.stickynotes.navigation.Screen
+import com.appgurjant.stickynotes.ui.util.BannerAd
 import com.appgurjant.stickynotes.ui.util.SetStatusBarColor
+import com.appgurjant.stickynotes.ui.util.ShowWelcomeNotification
 
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -95,8 +99,8 @@ fun DashboardScreen(navController: NavController) {
     noteViewModel.getAllNotes()
     val context = LocalContext.current
     val shouldShowWelcomeNotification by noteViewModel.shouldShowWelcomeNotification.collectAsState()
+    var notificationPermissionGranted by remember { mutableStateOf(false) }
 
-    Log.e("currentAppLanguage", getCurrentAppLanguage(context))
     val notes by noteViewModel.filteredNotes.collectAsState()
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         SetStatusBarColor(color = colorResource(id = R.color.primary), darkIcons = true)
@@ -111,15 +115,18 @@ fun DashboardScreen(navController: NavController) {
             it.noteType
         )
     }
+    LaunchedEffect(notificationPermissionGranted) {
+        if (shouldShowWelcomeNotification) {
+            ShowWelcomeNotification(context, noteViewModel)
+        }
+    }
 
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { isGranted ->
             if (isGranted) {
-                if (shouldShowWelcomeNotification) {
-                    showWelcomeNotification(context, noteViewModel)
-                }
+                notificationPermissionGranted = true
             }
         }
     )
@@ -131,30 +138,7 @@ fun DashboardScreen(navController: NavController) {
 }
 
 
-@RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
-private fun showWelcomeNotification(context: Context, noteViewModel: NoteViewModel) {
-    // First, update the flag to prevent showing it again
-    noteViewModel.setWelcomeNotificationShown(false)
-    val channelId = "welcome_channel"
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        val channel = NotificationChannel(
-            channelId,
-            "Welcome Notifications",
-            NotificationManager.IMPORTANCE_HIGH
-        )
-        channel.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-        val manager = context.getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(channel)
-    }
-    val notification = NotificationCompat.Builder(context, channelId)
-        .setSmallIcon(R.drawable.app_logo_without_bg)
-        .setContentTitle("Welcome to NoteZia 🎉")
-        .setContentText("Thanks for installing! Let’s get started.")
-        .setPriority(NotificationCompat.PRIORITY_HIGH)
-        .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-        .build()
-    NotificationManagerCompat.from(context).notify(1002, notification)
-}
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -168,17 +152,21 @@ fun DashboardUi(
     val focusRequester = remember { FocusRequester() }
     val context = LocalContext.current
     var spokenText by remember { mutableStateOf("") }
-
+    val noteZiaQuotes = context.resources.getStringArray(R.array.notezia_quotes)
+    val randomQuote = remember { noteZiaQuotes.random() }
     // Add this state for tracking selected filter
     var filteredNotes by remember { mutableStateOf(noteList) }
 
     var selectedFilter by remember { mutableStateOf(NoteFilterType.ALL) }
+
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val matches = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+
             spokenText = matches?.firstOrNull() ?: ""
+            Log.e("speakNote",spokenText)
             navController.navigate(
                 Screen.CreateNewNoteScreen.passNoteType(
                     AppEnum.VoiceNote.name,
@@ -193,7 +181,12 @@ fun DashboardUi(
             focusManager.clearFocus()
         }
     }
-
+    val gradient = Brush.verticalGradient(
+        colors = listOf(
+            Color(0xFFE3F2FD),
+            Color.White
+        )
+    )
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -203,11 +196,25 @@ fun DashboardUi(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(color = colorResource(R.color.white))
+                .background(gradient)
         )
         {
             // Custom Toolbar
             WavyToolbar(title = stringResource(R.string.my_notes) ,navController)
+            Text(
+                stringResource(R.string.today_s_thought),
+                fontFamily = FontFamily(Font(R.font.inter_semibold)),
+                fontSize = 14.sp,
+                modifier = Modifier.padding(horizontal = 10.dp)
+            )
+            Text(randomQuote,
+                fontFamily = FontFamily(Font(R.font.inter_regular)),
+                modifier = Modifier.padding(vertical = 5.dp, horizontal = 10.dp),
+                style = TextStyle(
+                    fontSize = 12.sp
+                )
+            )
+
 
             // Search bar for filtering notes
             OutlinedCard(
@@ -238,10 +245,14 @@ fun DashboardUi(
                 )
             }
 
+
             filterChips(selectedFilter) { it ->
                 Log.e("DashboardScreen", "Selected filter: $selectedFilter")
                 selectedFilter = it
             }
+            BannerAd(modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp))
             if (noteList.isNotEmpty()) {
                 filteredNotes = when (selectedFilter) {
                     NoteFilterType.TEXT_NOTE -> noteList.filter { it.typeOfNote == AppEnum.TextNote.name }

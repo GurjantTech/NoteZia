@@ -19,11 +19,23 @@ android {
         applicationId = "com.appgurjant.stickynotes"
         minSdk = 24
         targetSdk = 36
-        versionCode = 21
-        versionName = "4.0.4"
+        versionCode = 24
+        versionName = "4.0.6"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        externalNativeBuild {
+            // For ndk-build, instead use the ndkBuild block.
+            cmake {
+                // Passes optional arguments to CMake.
+                arguments += listOf("-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON")
+            }
+        }
     }
 
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
     buildTypes {
         debug {
             isMinifyEnabled = false
@@ -49,8 +61,8 @@ android {
         compose = true
         buildConfig = true
     }
+    flavorDimensions += listOf("version")
 
-    flavorDimensions("version")
     productFlavors {
         create("dev") {
             dimension = "version"
@@ -78,18 +90,16 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     // Explicitly add Material 3 with version
-    implementation("androidx.compose.material3:material3:1.2.0")
+    implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.material.icons.extended) // Material Icons Extended
     implementation(libs.androidx.navigation.compose)
-
-    // kotlin coroutines for flow
-    implementation(libs.kotlinx.coroutines.core)
 
 
     // Room Database
     implementation(libs.androidx.rooms.runtime)
     implementation(libs.ui.graphics)
     implementation(libs.androidx.foundation)
+    implementation(libs.androidx.compose.runtime)
 
     kapt(libs.androidx.rooms.compiler)
     implementation(libs.androidx.rooms.ktx) // Kotlin Extensions and Coroutines support
@@ -124,25 +134,28 @@ dependencies {
 
     // security
     // Security Crypto for encrypted preferences and file storage
-    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    implementation("androidx.security:security-crypto:1.1.0")
 
     // For encrypted SharedPreferences
-    implementation("androidx.security:security-crypto-ktx:1.1.0-alpha06")
+    implementation("androidx.security:security-crypto-ktx:1.1.0")
 
     // For encrypting large files
     implementation("net.zetetic:android-database-sqlcipher:4.5.4" )
     implementation("androidx.sqlite:sqlite-ktx:2.3.1")
 
     implementation(libs.androidx.biometric)
+    implementation("com.google.accompanist:accompanist-systemuicontroller:0.30.1")
 
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.ui.test.junit4)
+    implementation("com.google.android.gms:play-services-ads:23.0.0")
+
+    implementation(libs.kotlinx.coroutines.android)
+
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-    implementation("com.google.accompanist:accompanist-systemuicontroller:0.30.1")
+
+
+
+
 
 
 }

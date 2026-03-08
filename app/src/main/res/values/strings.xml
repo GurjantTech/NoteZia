@@ -27,7 +27,7 @@
     <string name="voice_note">Voice Note</string>
     <string name="check_list">Check List</string>
     <string name="quick_capture">Quick Capture</string>
-    <string name="blank_note">Blank Note</string>
+    <string name="blank_note">Empty Note</string>
     <string name="all">All</string>
     <string name="quick_capture_note">Quick Capture Note</string>
     <string name="description_must_be_at_least_3_characters_long">Description must be at least 3 characters long</string>
@@ -35,17 +35,19 @@
     <string name="delete_note">Delete Note</string>
     <string name="are_you_sure_you_want_to_delete_this_note">Are you sure you want to delete this note?</string>
     <string name="change_language">Change Language</string>
+    <string name="confirm">Confirm</string>
+    <string name="today_s_thought">💡 Today\'s Thought</string>
 
     <string-array name="notezia_quotes">
-        <item>"Idea aaya? NoteZia pe likh daalo!"</item>
-        <item>"Chhoti si soch, badi ban sakti hai – bas likh lo!"</item>
-        <item>"Kal ka success, aaj ka note ban sakta hai."</item>
-        <item>"Dil aur dimaag ke ideas, sab safe yahan."</item>
-        <item>"Socho mat, likho – baaki NoteZia sambhalega."</item>
-        <item>"Har idea deserves ek jagah – yeh hai woh jagah!"</item>
-        <item>"Jab soch naya aaye, turant capture karo."</item>
-        <item>"Likhna hi jeetna hai – start with NoteZia."</item>
-        <item>"Apne thoughts ko action mein badlo."</item>
-        <item>"Yahan se shuru hoti hai tumhari idea ki kahani."</item>
+        <item>"💡 Idea aaya? NoteZia mein turant likh lo!"</item>
+        <item>"✍️ Chhoti soch bhi bada idea ban sakti hai – bas likh lo."</item>
+        <item>"🚀 Aaj ka note, kal ka success ban sakta hai."</item>
+        <item>"🧠 Dil aur dimaag ke ideas – sab safe NoteZia mein."</item>
+        <item>"⚡ Socho mat… likh do!"</item>
+        <item>"📌 Har idea important hai – usse capture karo."</item>
+        <item>"⏳ Idea ko bhoolne se pehle note bana lo."</item>
+        <item>"📖 Har great story ek simple note se shuru hoti hai."</item>
+        <item>"🎯 Thoughts ko action mein badalne ka pehla step – likhna."</item>
+        <item>"🌟 Tumhare ideas special hain – unhe save karo."</item>
     </string-array>
 </resources>

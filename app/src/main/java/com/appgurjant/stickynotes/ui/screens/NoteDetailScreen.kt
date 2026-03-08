@@ -22,8 +22,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.Checkbox
@@ -36,6 +38,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -65,16 +68,17 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.app.domain.model.Note
+import com.app.domain.model.TextStyleConfig
 import com.appgurjant.stickynotes.AppUtil.AppEnum
-import com.appgurjant.stickynotes.AppUtil.NoteFilterType
 import com.appgurjant.stickynotes.AppUtil.currentTime
 import com.appgurjant.stickynotes.AppUtil.userTimeFormat
 import com.appgurjant.stickynotes.R
 import com.appgurjant.stickynotes.components.DeleteNoteAlertDialog
 import com.appgurjant.stickynotes.components.RichTextEditor
-import com.appgurjant.stickynotes.components.TextFormatting
+
 import com.appgurjant.stickynotes.firebase.FirebaseEvent
 import com.appgurjant.stickynotes.navigation.Screen
+import com.appgurjant.stickynotes.ui.util.BannerAd
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 
@@ -98,6 +102,12 @@ fun NoteDetailScreen(
                     viewModel.updateCurrentContentJson(it)
                 }
             }
+            else -> {
+                noteDetail.textStyleConfig?.let {
+                    viewModel.onTextStyleConfigChange(it)
+                }
+            }
+
         }
         NoteDetailUi(navController, noteDetail, viewModel)
     }
@@ -132,7 +142,8 @@ fun NoteDetailScreen(
                 description = viewModel.noteDescription,
                 timeStamp = String().currentTime(),
                 contentJson = viewModel.currentContentJson,
-                noteType = noteDetail.noteType
+                noteType = noteDetail.noteType,
+                textStyleConfig = viewModel.textStyleConfig
             )
             viewModel.updateNote(updatedNote)
 
@@ -148,18 +159,11 @@ fun NoteDetailUi(navController: NavController, noteDetail: Note, viewModel: Note
     val context = LocalContext.current
     viewModel.onTitleChange(noteDetail.title ?: "")
     viewModel.onDescriptionChange(noteDetail.description ?: "")
+    viewModel.onTextStyleConfigChange(noteDetail.textStyleConfig?: TextStyleConfig())
+
     var showDeleteDialog by remember { mutableStateOf(false) }
     val focusRequesters = remember { mutableMapOf<Int, FocusRequester>() }
-    
-    // State for text formatting
-    var textFormatting by remember { 
-        mutableStateOf(
-            TextFormatting(
-                fontSize = 16,
-                fontFamily = FontFamily(Font(R.font.inter_regular))
-            )
-        )
-    }
+
 
 
     DeleteNoteAlertDialog(showDeleteDialog, {
@@ -171,104 +175,131 @@ fun NoteDetailUi(navController: NavController, noteDetail: Note, viewModel: Note
     })
 
     val horizontalPadding = 16.dp
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(color = Color.White)
-            .systemBarsPadding()
-    ) {
-        // Header with back button and delete
-        Row(
+    Column(modifier = Modifier
+        .fillMaxSize()
+        .background(color = Color.White)
+        .systemBarsPadding()) {
+
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
         )
+
         {
-            Image(
-                imageVector = ImageVector.vectorResource(R.drawable.ic_back),
-                contentDescription = "back",
-                modifier = Modifier
-                    .size(30.dp)
-
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = LocalIndication.current
-                    ) {
-                        updateNote(
-                            viewModel,
-                            noteDetail,
-                            context,
-                            viewModel.isContentModified,
-                            viewModel.currentContentJson, 
-                            navController
-                        )
-                    }
-            )
-
-            Image(
-                imageVector = ImageVector.vectorResource(R.drawable.ic_delete),
-                contentDescription = "Delete",
-                modifier = Modifier
-                    .size(30.dp)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = LocalIndication.current
-                    ) {
-                        showDeleteDialog = true
-                    }
-            )
-        }
-        // Title field (simple TextField without formatting)
-        noteDetail.title?.let { title ->
-            TextField(
-                value = title,
-                onValueChange = { viewModel.onTitleChange(it) },
-                placeholder = { 
-                    Text(
-                        "Untitled", 
-                        color = Color.LightGray, 
-                        fontSize = 20.sp,
-                        fontFamily = FontFamily(Font(R.font.inter_regular))
-                    ) 
-                },
-                textStyle = LocalTextStyle.current.merge(
-                    TextStyle(
-                        fontSize = 20.sp,
-                        fontFamily = FontFamily(Font(R.font.inter_regular))
-                    )
-                ),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    disabledContainerColor = Color.Transparent,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    disabledIndicatorColor = Color.Transparent
-                ),
-            )
-        }
-
-        noteDetail.timeStamp?.let {
-            Log.e("Time", it)
-            Text(
-                String().userTimeFormat(it),
+            // Header with back button and delete
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = horizontalPadding),
-                fontSize = 14.sp,
-                fontFamily = FontFamily(
-                    Font(
-                        R.font.inter_regular
-                    )
-                ),
-                color = Color.DarkGray,
+                    .padding(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             )
-        }
+            {
+                Image(
+                    imageVector = ImageVector.vectorResource(R.drawable.ic_back),
+                    contentDescription = "back",
+                    modifier = Modifier
+                        .size(30.dp)
 
-        // Show either RichTextEditor or Checklist based on note type
-        if (noteDetail.noteType == AppEnum.CheckList.name) {
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = LocalIndication.current
+                        ) {
+                            updateNote(
+                                viewModel,
+                                noteDetail,
+                                context,
+                                viewModel.isContentModified,
+                                viewModel.currentContentJson,
+                                navController
+                            )
+                        }
+                )
+
+                Image(
+                    imageVector = ImageVector.vectorResource(R.drawable.ic_delete),
+                    contentDescription = "Delete",
+                    modifier = Modifier
+                        .size(30.dp)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = LocalIndication.current
+                        ) {
+                            showDeleteDialog = true
+                        }
+                )
+            }
+            // Title field (simple TextField without formatting)
+            noteDetail.title?.let { title ->
+                TextField(
+                    value = title,
+                    onValueChange = { viewModel.onTitleChange(it) },
+                    placeholder = {
+                        Text(
+                            "Untitled",
+                            color = Color.LightGray,
+                            fontSize = 20.sp,
+                            fontFamily = FontFamily(Font(R.font.inter_regular))
+                        )
+                    },
+                    textStyle = LocalTextStyle.current.merge(
+                        TextStyle(
+                            fontSize = 20.sp,
+                            fontFamily = FontFamily(Font(R.font.inter_regular))
+                        )
+                    ),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        disabledContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent
+                    ),
+                )
+            }
+
+            noteDetail.timeStamp?.let {
+                Log.e("Time", it)
+                Text(
+                    String().userTimeFormat(it),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = horizontalPadding),
+                    fontSize = 14.sp,
+                    fontFamily = FontFamily(
+                        Font(
+                            R.font.inter_regular
+                        )
+                    ),
+                    color = Color.DarkGray,
+                )
+            }
+
+            // Show either RichTextEditor or Checklist based on note type
+            // Show RichTextEditor for non-checklist notes
+            noteDetail.description?.let { description ->
+                Log.e("Description", description)
+                if(description.isNotEmpty()){
+                    RichTextEditor(
+                        value = description,
+                        onValueChange = {
+                            viewModel.onDescriptionChange(it)
+                            viewModel.isContentModified = true
+                        },
+                        textFormatting = noteDetail.textStyleConfig?: TextStyleConfig(),
+                        onFormatChange = { newConfig ->
+                            Log.e("NewConfig", newConfig.toString())
+                            viewModel.onTextStyleConfigChange(newConfig)
+                            viewModel.isContentModified = true
+                        },
+                        modifier = Modifier.weight(1f),
+
+                    )
+                }
+
+            }
             noteDetail.contentJson?.let { json ->
                 if (json.isNotEmpty()) {
                     val gson = Gson()
@@ -282,7 +313,7 @@ fun NoteDetailUi(navController: NavController, noteDetail: Note, viewModel: Note
                             }
                         )
                     }
-        
+
                     // Update the contentJson when checklist changes
                     LaunchedEffect(checklist) {
                         viewModel.currentContentJson = gson.toJson(checklist)
@@ -292,178 +323,147 @@ fun NoteDetailUi(navController: NavController, noteDetail: Note, viewModel: Note
                     // Now you can use checklistItems
                     if (checklist.isNotEmpty()) {
                         Column(modifier = Modifier.padding(horizontal = 10.dp)) {
-                        checklist.forEachIndexed { index, item ->
-                            val focusRequester = remember { FocusRequester() }
-                            LaunchedEffect(Unit) {
-                                focusRequesters[index] = focusRequester
-                                if (index == checklist.lastIndex) {
-                                    focusRequester.requestFocus()
+                            checklist.forEachIndexed { index, item ->
+                                val focusRequester = remember { FocusRequester() }
+                                LaunchedEffect(Unit) {
+                                    focusRequesters[index] = focusRequester
+                                    if (index == checklist.lastIndex) {
+                                        focusRequester.requestFocus()
+                                    }
                                 }
-                            }
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 2.dp)
-                            ) {
-                                Checkbox(
-                                    checked = item.checked,
-                                    onCheckedChange = { checked ->
-                                        // Create a new list with the updated item
-                                        val updatedList = checklist.mapIndexed { i, listItem ->
-                                            if (i == index) listItem.copy(checked = checked) else listItem
-                                        }
-                                        // Update the state
-                                        checklist = updatedList.toMutableStateList()
-                                        viewModel.isContentModified = true
-                                        viewModel.currentContentJson = gson.toJson(checklist)
-
-                                    },
-                                    colors = CheckboxDefaults.colors(
-                                        checkedColor = colorResource(R.color.primary),
-                                        uncheckedColor = Color.Gray
-                                    )
-                                )
                                 Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 2.dp)
                                 ) {
-
-                                    TextField(
-                                        value = item.text,
-                                        onValueChange = { text ->
+                                    Checkbox(
+                                        checked = item.checked,
+                                        onCheckedChange = { checked ->
+                                            // Create a new list with the updated item
                                             val updatedList = checklist.mapIndexed { i, listItem ->
-                                                if (i == index) listItem.copy(text = text) else listItem
+                                                if (i == index) listItem.copy(checked = checked) else listItem
                                             }
+                                            // Update the state
                                             checklist = updatedList.toMutableStateList()
                                             viewModel.isContentModified = true
-                                            viewModel.currentContentJson = gson.toJson(updatedList)
-                                        },
-                                        textStyle = LocalTextStyle.current.copy(
-                                            textDecoration = if (item.checked) TextDecoration.LineThrough else TextDecoration.None,
-                                            color = if (item.checked) Color.Gray else LocalContentColor.current
-                                        ),
-                                        placeholder = {
-                                            Text(
-                                                "Enter item...",
-                                                color = Color.LightGray
-                                            )
-                                        },
-                                        singleLine = true,
-                                        modifier = Modifier.focusRequester(focusRequester),
-                                        keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next),
-                                        keyboardActions = KeyboardActions(
-                                            onNext = {
-                                                if (index == checklist.lastIndex && item.text.isNotBlank()) {
-                                                    checklist.add(ChecklistItem("", false))
-                                                }
-                                            }
-                                        ),
-                                        colors = TextFieldDefaults.colors(
-                                            focusedContainerColor = Color.Transparent,
-                                            unfocusedContainerColor = Color.Transparent,
-                                            disabledContainerColor = Color.Transparent,
-                                            focusedIndicatorColor = Color.Transparent,
-                                            unfocusedIndicatorColor = Color.Transparent,
-                                            disabledIndicatorColor = Color.Transparent
+                                            viewModel.currentContentJson = gson.toJson(checklist)
 
+                                        },
+                                        colors = CheckboxDefaults.colors(
+                                            checkedColor = colorResource(R.color.primary),
+                                            uncheckedColor = Color.Gray
                                         )
                                     )
-                                    Image(
-                                        Icons.Default.Clear,
-                                        "remove",
-                                        modifier = Modifier
-                                            .size(20.dp)
-                                            .clickable(
-                                                interactionSource = remember { MutableInteractionSource() },
-                                                indication = LocalIndication.current
-                                            ) {
-                                                val updatedList = checklist.toMutableList().apply {
-                                                    removeAt(index)
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+
+                                        TextField(
+                                            value = item.text,
+                                            onValueChange = { text ->
+                                                val updatedList = checklist.mapIndexed { i, listItem ->
+                                                    if (i == index) listItem.copy(text = text) else listItem
                                                 }
                                                 checklist = updatedList.toMutableStateList()
                                                 viewModel.isContentModified = true
-                                                viewModel.currentContentJson =
-                                                    gson.toJson(updatedList)
-                                            }
-                                    )
+                                                viewModel.currentContentJson = gson.toJson(updatedList)
+                                            },
+                                            textStyle = LocalTextStyle.current.copy(
+                                                textDecoration = if (item.checked) TextDecoration.LineThrough else TextDecoration.None,
+                                                color = if (item.checked) Color.Gray else LocalContentColor.current
+                                            ),
+                                            placeholder = {
+                                                Text(
+                                                    "Enter item...",
+                                                    color = Color.LightGray
+                                                )
+                                            },
+                                            singleLine = true,
+                                            modifier = Modifier.focusRequester(focusRequester),
+                                            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next),
+                                            keyboardActions = KeyboardActions(
+                                                onNext = {
+                                                    if (index == checklist.lastIndex && item.text.isNotBlank()) {
+                                                        checklist.add(ChecklistItem("", false))
+                                                    }
+                                                }
+                                            ),
+                                            colors = TextFieldDefaults.colors(
+                                                focusedContainerColor = Color.Transparent,
+                                                unfocusedContainerColor = Color.Transparent,
+                                                disabledContainerColor = Color.Transparent,
+                                                focusedIndicatorColor = Color.Transparent,
+                                                unfocusedIndicatorColor = Color.Transparent,
+                                                disabledIndicatorColor = Color.Transparent
+
+                                            )
+                                        )
+                                        Image(
+                                            Icons.Default.Clear,
+                                            "remove",
+                                            modifier = Modifier
+                                                .size(20.dp)
+                                                .clickable(
+                                                    interactionSource = remember { MutableInteractionSource() },
+                                                    indication = LocalIndication.current
+                                                ) {
+                                                    val updatedList = checklist.toMutableList().apply {
+                                                        removeAt(index)
+                                                    }
+                                                    checklist = updatedList.toMutableStateList()
+                                                    viewModel.isContentModified = true
+                                                    viewModel.currentContentJson =
+                                                        gson.toJson(updatedList)
+                                                }
+                                        )
+                                    }
+
                                 }
 
                             }
 
-                        }
 
+                            Spacer(modifier = Modifier.height(8.dp))
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier
+                                    .padding(10.dp)
+                                    .wrapContentWidth()
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = LocalIndication.current
+                                    ) {
+                                        checklist.add(ChecklistItem("", false))
+                                    },
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Image(
+                                    painter = painterResource(R.drawable.ic_add),
+                                    "Add Icon",
+                                )
 
-                        Row(
-                            modifier = Modifier
-                                .padding(10.dp)
-                                .wrapContentWidth()
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = LocalIndication.current
-                                ) {
-                                    checklist.add(ChecklistItem("", false))
-                                },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Image(
-                                painter = painterResource(R.drawable.ic_add),
-                                "Add Icon",
-                            )
-
-                            Text(
-                                "List Item",
-                                color = Color.Gray,
-                                fontSize = 14.sp,
-                                fontFamily = FontFamily(Font(R.font.inter_semibold)),
-                                modifier = Modifier.padding(horizontal = 10.dp)
-                            )
+                                Text(
+                                    "List Item",
+                                    color = Color.Gray,
+                                    fontSize = 14.sp,
+                                    fontFamily = FontFamily(Font(R.font.inter_semibold)),
+                                    modifier = Modifier.padding(horizontal = 10.dp)
+                                )
+                            }
                         }
                     }
-                } else {
-            // Show RichTextEditor for non-checklist notes
-            noteDetail.description?.let { description ->
-                RichTextEditor(
-                    value = description,
-                    onValueChange = { 
-                        viewModel.onDescriptionChange(it)
-                        viewModel.isContentModified = true
-                    },
-                    textFormatting = textFormatting,
-                    onFormatChange = { newFormatting ->
-                        textFormatting = newFormatting
-                        viewModel.isContentModified = true
-                    },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
                 }
             }
-        } else {
-            // Show RichTextEditor for non-checklist notes
-            noteDetail.description?.let { description ->
-                RichTextEditor(
-                    value = description,
-                    onValueChange = { 
-                        viewModel.onDescriptionChange(it)
-                        viewModel.isContentModified = true
-                    },
-                    textFormatting = textFormatting,
-                    onFormatChange = { newFormatting ->
-                        textFormatting = newFormatting
-                        viewModel.isContentModified = true
-                    },
-                    modifier = Modifier.weight(1f)
-                )
-            }
         }
+
+        BannerAd(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp))
     }
+
 }
 
-private fun RowScope.updateNote(
+private fun updateNote(
     viewModel: NoteViewModel,
     noteDetail: Note,
     context: Context,
@@ -485,7 +485,8 @@ private fun RowScope.updateNote(
                 description = viewModel.noteDescription,
                 timeStamp = String().currentTime(),
                 contentJson = contentJson,
-                noteType = noteDetail.noteType
+                noteType = noteDetail.noteType,
+                textStyleConfig = viewModel.textStyleConfig
             )
             viewModel.updateNote(updatedNote)
         }
@@ -498,7 +499,8 @@ private fun RowScope.updateNote(
                     description = viewModel.noteDescription,
                     timeStamp = String().currentTime(),
                     contentJson = contentJson,
-                    noteType = noteDetail.noteType
+                    noteType = noteDetail.noteType,
+                    textStyleConfig = viewModel.textStyleConfig
                 )
                 viewModel.updateNote(updatedNote)
             } else {

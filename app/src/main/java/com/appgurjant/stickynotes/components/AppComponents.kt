@@ -14,6 +14,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -28,6 +29,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -69,31 +71,40 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
+import com.app.domain.model.Note
 import com.appgurjant.stickynotes.AppUtil.AppEnum
 import com.appgurjant.stickynotes.AppUtil.NoteFilterType
+import com.appgurjant.stickynotes.AppUtil.currentTime
 import com.appgurjant.stickynotes.R
+import com.appgurjant.stickynotes.ui.screens.ChecklistItem
 import com.appgurjant.stickynotes.ui.screens.NoteType
+import com.appgurjant.stickynotes.ui.screens.NoteViewModel
+import com.google.gson.Gson
 import kotlinx.coroutines.flow.StateFlow
 import java.io.File
 import kotlin.io.path.Path
 import kotlin.io.path.moveTo
+import kotlin.toString
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -153,9 +164,9 @@ fun OutlinedInputTextField(hint: String) {
 fun GradientBtn(text: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
-            .width(100.dp)
+            .width(160.dp)
             .height(40.dp)
-            .clip(RoundedCornerShape(40.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(
                 brush = Brush.linearGradient(
                     colors = listOf(
@@ -176,13 +187,19 @@ fun GradientBtn(text: String, onClick: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TextInputField(hint: String, text: String? = "", onTextChanged: (String) -> Unit) {
+fun TextInputField(hint: String, voiceNote: String, text: String? = "", onTextChanged: (String) -> Unit) {
     var inputTxt by remember { mutableStateOf(text.toString()) }
+    Log.e("speakNote","on CreateNewNote TextInputField ${voiceNote.toString()}")
     TextField(
-        value = inputTxt,
+        value = if(!voiceNote.isNullOrEmpty()){
+         "Voice Note"
+        }else{
+            inputTxt
+        },
         onValueChange = {
             inputTxt = it
             onTextChanged(it)
+
         },
         placeholder = {
             Text(
@@ -229,7 +246,6 @@ fun FullTextInputField(hint: String, text: String? = "", onTextChanged: (String)
             unfocusedIndicatorColor = Color.Transparent,
             disabledIndicatorColor = Color.Transparent
         ),
-        modifier = Modifier.fillMaxSize(),
         textStyle = TextStyle(
             fontFamily = FontFamily(Font(R.font.inter_regular)),
             fontSize = 16.sp, color = Color.Black
@@ -274,12 +290,12 @@ fun DeleteNoteAlertDialog(
                     onConfirm()
                     onDismiss()
                 }) {
-                    Text("Yes", fontFamily = FontFamily(Font(R.font.inter_regular)))
+                    Text(stringResource(R.string.confirm), fontFamily = FontFamily(Font(R.font.inter_regular)))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { onDismiss() }) {
-                    Text("No", fontFamily = FontFamily(Font(R.font.inter_regular)))
+                    Text(stringResource(R.string.cancel), fontFamily = FontFamily(Font(R.font.inter_regular)))
                 }
             }
         )
@@ -508,7 +524,6 @@ fun filterChips(
                     labelColor = Color.LightGray,
                 ),
                 modifier = Modifier
-                    .padding(horizontal = 4.dp)
                     .height(36.dp)
             )
         }
@@ -554,5 +569,101 @@ fun getCurrentAppLanguage(context: Context): String {
         locales ?: "en" // fallback to English
     } else {
         "en" // default
+    }
+}
+
+@Composable
+fun CreateNoteToolbar(navController: NavController,viewModel: NoteViewModel,noteType: String,context: Context,checklist: List<ChecklistItem>){
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    )
+    {
+        Image(
+            imageVector = ImageVector.vectorResource(R.drawable.ic_back),
+            "back",
+            modifier = Modifier
+                .size(40.dp)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = LocalIndication.current
+                ) {
+                    navController.popBackStack()
+                },
+            alignment = Alignment.TopEnd
+        )
+
+        Image(
+            imageVector = ImageVector.vectorResource(R.drawable.ic_check),
+            "note save",
+            modifier = Modifier
+                .size(40.dp)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = LocalIndication.current
+                ) {
+
+                    if (viewModel.noteTitle == "") {
+                        viewModel.noteTitle = "Untitled Note"
+                    }
+                    when (noteType) {
+                        AppEnum.VoiceNote.name, AppEnum.TextNote.name -> {
+                            if (noteType == AppEnum.VoiceNote.name) {
+                                viewModel.noteTitle = context.getString(R.string.voice_note)
+                            }
+                            if (viewModel.noteDescription.length < 3) {
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.description_must_be_at_least_3_characters_long),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                return@clickable
+                            }
+                            val note = Note(
+                                "",
+                                viewModel.noteTitle,
+                                viewModel.noteDescription,
+                                String().currentTime(),
+                                noteType = noteType,
+                                textStyleConfig = viewModel.textStyleConfig
+
+
+                            )
+                            viewModel.saveNote(note)
+                        }
+
+                        AppEnum.QrNote.name -> {
+                            if (noteType == AppEnum.QrNote.name) {
+                                viewModel.noteTitle = context.getString(R.string.quick_capture)
+                            }
+                            val note = Note(
+                                "",
+                                viewModel.noteTitle,
+                                viewModel.noteDescription,
+                                String().currentTime(),
+                                noteType = noteType,
+                                textStyleConfig = viewModel.textStyleConfig
+                            )
+                            viewModel.saveNote(note)
+                        }
+
+                        AppEnum.CheckList.name -> {
+                            val json = Gson().toJson(checklist)
+                            val note = Note(
+                                title = viewModel.noteTitle,
+                                description = "",
+                                timeStamp = String().currentTime(),
+                                contentJson = json,
+                                noteType = noteType
+                            )
+                            viewModel.saveNote(note)
+                        }
+                    }
+
+
+                },
+            alignment = Alignment.TopEnd
+        )
     }
 }

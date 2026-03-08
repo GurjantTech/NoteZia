@@ -1,23 +1,20 @@
 package com.appgurjant.stickynotes.ui.screens
 
 import android.util.Log
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.app.data.security.SecureStorage
 import com.app.domain.model.Note
 import com.app.domain.model.StandardResponse
-import com.app.domain.repository.SecureRepository
+import com.app.domain.model.TextStyleConfig
 import com.app.domain.usecase.AddNoteUseCase
 import com.app.domain.usecase.AllNoteUseCase
 import com.app.domain.usecase.DeleteNoteUseCase
 import com.app.domain.usecase.GetNoteDetailFromLocalUseCase
 import com.app.domain.usecase.UpdateNoteDetailFromLocalUseCase
-import com.app.domain.utils.UIState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -39,6 +36,7 @@ class NoteViewModel @Inject constructor(
 ) : ViewModel() {
     var noteTitle by  mutableStateOf("")
     var noteDescription by   mutableStateOf("")
+    var textStyleConfig by   mutableStateOf(TextStyleConfig())
 
     private val _noteSaveState = MutableStateFlow<String?>(null)
     val noteSaveState: StateFlow<String?> = _noteSaveState
@@ -61,6 +59,9 @@ class NoteViewModel @Inject constructor(
 
     fun onTitleChange(newTitle: String) { noteTitle = newTitle }
     fun onDescriptionChange(newDesc: String) { noteDescription = newDesc }
+    fun onTextStyleConfigChange(newTextStyleConfig: TextStyleConfig) {
+        textStyleConfig = newTextStyleConfig
+    }
 
 
     private val _searchQuery = MutableStateFlow("")
@@ -115,6 +116,7 @@ class NoteViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 getNoteDetailUseCase(noteId).collect { note ->
+                    Log.e("NoteViewModel", "Response : "+note)
                     _getNotesDetailByIdFromLocal.value = note
 
                 }
@@ -164,7 +166,7 @@ class NoteViewModel @Inject constructor(
       secureStorage.setManualAppPIN(pin)
     }
     fun getPin():String{
-        return secureStorage.getManualAppPIN("").toString()
+        return secureStorage.getManualAppPIN().toString()
     }
 
 }

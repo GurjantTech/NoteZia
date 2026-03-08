@@ -20,10 +20,10 @@ android {
 
 dependencies {
     implementation(project(":domain"))
-
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.appcompat)
     // Room Database
     implementation(libs.androidx.rooms.runtime)
     kapt(libs.androidx.rooms.compiler)
     implementation(libs.androidx.rooms.ktx) // Kotlin Extensions and Coroutines support
-
 }

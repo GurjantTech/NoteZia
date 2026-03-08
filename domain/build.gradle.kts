@@ -1,6 +1,7 @@
 plugins {
     id("java-library")  // ✅ Correct: Pure Kotlin Module
     alias(libs.plugins.kotlin.jvm)
+
 }
 
     java {
@@ -14,7 +15,8 @@ plugins {
 
 
 dependencies {
-    implementation(libs.kotlinx.coroutines.core)   // ✅ Add this line
+    implementation(libs.kotlinx.coroutines.android)
+
 }
 
 

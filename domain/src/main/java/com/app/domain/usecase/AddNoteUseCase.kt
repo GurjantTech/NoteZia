@@ -2,7 +2,6 @@ package com.app.domain.usecase
 
 import com.app.domain.model.Note
 import com.app.domain.repository.NoteRepository
-import com.app.domain.utils.UIState
 import kotlinx.coroutines.flow.Flow
 
 

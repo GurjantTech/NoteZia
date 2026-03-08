@@ -1,15 +1,12 @@
 package com.app.data.local.dao
 
 import androidx.room.Dao
-import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
-import com.app.data.entites.StandardResponseEntity
 import com.app.data.local.entity.NoteEntity
-import com.app.domain.model.Note
-import com.app.domain.model.StandardResponse
+
 
 @Dao
 interface NoteDao {

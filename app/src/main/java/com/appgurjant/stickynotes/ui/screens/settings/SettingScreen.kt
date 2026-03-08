@@ -21,10 +21,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -67,6 +69,7 @@ import com.appgurjant.stickynotes.R
 import com.appgurjant.stickynotes.firebase.FirebaseEvent
 import com.appgurjant.stickynotes.navigation.Screen
 import com.appgurjant.stickynotes.ui.screens.NoteViewModel
+import com.appgurjant.stickynotes.ui.util.BannerAd
 import com.google.android.datatransport.runtime.ExecutionModule_ExecutorFactory.executor
 
 
@@ -74,31 +77,33 @@ import com.google.android.datatransport.runtime.ExecutionModule_ExecutorFactory.
 @Composable
 fun SettingScreen(navController: NavController) {
     val context = LocalContext.current
-    val noteViewModel : NoteViewModel = hiltViewModel<NoteViewModel>()
-//    var isOpenBottomSheet by remember { mutableStateOf(false) }
-//
-//    if (isOpenBottomSheet) {
-//        SetPinBottomSheet(navController) {
-//            if(it.isNotEmpty()){
-//                isOpenBottomSheet=false
-//                noteViewModel.setAppPin(it)
-//                Log.e("UserPin", it)
-//            }
-//
-//        }
-//    }
+    val noteViewModel: NoteViewModel = hiltViewModel<NoteViewModel>()
+    var isOpenBottomSheet by remember { mutableStateOf(false) }
+
+    Log.e("UserPin",  noteViewModel.getPin())
+
+    if (isOpenBottomSheet) {
+        SetPinBottomSheet(navController) {
+            if(it.isNotEmpty()){
+                isOpenBottomSheet=false
+                noteViewModel.setAppPin(it)
+                Log.e("UserPin", it)
+            }
+
+        }
+    }
 
 
     val settingsCategories = listOf(
-//        CategoryItem(
-//            title = stringResource(R.string.security),
-//            features = listOf(
-//                FeatureItem("app_lock", "App PIN", R.drawable.ic_lock) {
-//                    /* open App Lock */
-//                    isOpenBottomSheet = true
-//                }
-//            )
-//        ),
+        CategoryItem(
+            title = stringResource(R.string.security),
+            features = listOf(
+                FeatureItem("app_lock", "Finger Print", R.drawable.ic_lock) {
+                    /* open App Lock */
+                    isOpenBottomSheet = true
+                }
+            )
+        ),
         CategoryItem(
             title = stringResource(R.string.preferences),
             features = listOf(
@@ -110,7 +115,7 @@ fun SettingScreen(navController: NavController) {
                     /* change language */
                     FirebaseEvent.logEvent(context, FirebaseEvent.changeLanguageEvent)
 
-                    try{
+                    try {
                         val intent = Intent(Settings.ACTION_APP_LOCALE_SETTINGS).apply {
                             data = Uri.parse("package:${context.packageName}")
                         }
@@ -119,13 +124,18 @@ fun SettingScreen(navController: NavController) {
                             context.startActivity(intent)
                         } else {
                             // Fallback → open app settings
-                            val fallbackIntent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                data = Uri.parse("package:${context.packageName}")
-                            }
+                            val fallbackIntent =
+                                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                    data = Uri.parse("package:${context.packageName}")
+                                }
                             context.startActivity(fallbackIntent)
                         }
-                    }catch (e: Exception){
-                        FirebaseEvent.logExceptionEvent(context, FirebaseEvent.exceptionEvent,e.message.toString())
+                    } catch (e: Exception) {
+                        FirebaseEvent.logExceptionEvent(
+                            context,
+                            FirebaseEvent.exceptionEvent,
+                            e.message.toString()
+                        )
                     }
 
                 }
@@ -171,9 +181,9 @@ fun SettingScreenUi(navController: NavController, categories: List<CategoryItem>
                         modifier = Modifier
                             .size(30.dp)
                             .clickable(
-    interactionSource = remember { MutableInteractionSource() },
-    indication = LocalIndication.current
-) {
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = LocalIndication.current
+                            ) {
                                 navController.popBackStack()
                             },
                         alignment = Alignment.TopStart
@@ -182,59 +192,50 @@ fun SettingScreenUi(navController: NavController, categories: List<CategoryItem>
             )
         }
     ) { paddingValues ->
-        Box(modifier = Modifier.padding(paddingValues),
-            ) {
-Column(modifier = Modifier.fillMaxWidth()) {
-    LazyColumn (modifier = Modifier.weight(1f).padding(horizontal = 10.dp)){
-        categories.forEach { category ->
-            item {
-                Text(
-                    text = category.title,
-                    fontFamily = FontFamily(Font(R.font.inter_semibold)),
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
-
-            items(category.features) { feature ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(
-    interactionSource = remember { MutableInteractionSource() },
-    indication = LocalIndication.current
-) {
-                            feature.onClick()
+        Box(
+            modifier = Modifier.padding(paddingValues),
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().wrapContentHeight()) {
+                LazyColumn(modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 10.dp)) {
+                    categories.forEach { category ->
+                        item {
+                            Text(
+                                text = category.title,
+                                fontFamily = FontFamily(Font(R.font.inter_semibold)),
+                                modifier = Modifier.padding(16.dp)
+                            )
                         }
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Image(
-                        painter = painterResource(id = feature.icon),
-                        contentDescription = feature.title
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = feature.title,
-                        fontFamily = FontFamily(Font(R.font.inter_regular)),
-                    )
+
+                        items(category.features) { feature ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = LocalIndication.current
+                                    ) {
+                                        feature.onClick()
+                                    }
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Image(
+                                    painter = painterResource(id = feature.icon),
+                                    contentDescription = feature.title
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = feature.title,
+                                    fontFamily = FontFamily(Font(R.font.inter_regular)),
+                                )
+                            }
+                        }
+                    }
                 }
             }
-        }
-    }
-    Text(
-        text = "App Version :  ${BuildConfig.VERSION_NAME}",
-        fontFamily = FontFamily(Font(R.font.inter_regular)),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        textAlign = TextAlign.Center,
-        fontSize = 12.sp,
-        color = Color.LightGray,
-    )
-}
-
-
-
+            BannerAd(modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter))
         }
 
     }

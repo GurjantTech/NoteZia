@@ -22,7 +22,7 @@ import com.appgurjant.stickynotes.ui.screens.settings.SettingScreen
 
 @Composable
 fun NoteZyNavGraph(navController:NavHostController){
- NavHost(navController = navController, startDestination = "splash"){
+ NavHost(navController = navController, startDestination = Screen.Splash.route){
      composable(Screen.Splash.route){
          SplashScreen(navController)
      }

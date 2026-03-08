@@ -1,45 +1,55 @@
 package com.appgurjant.stickynotes.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FormatBold
 import androidx.compose.material.icons.filled.FormatItalic
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.FormatUnderlined
 import androidx.compose.material.icons.filled.TextFields
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconToggleButton
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.sp
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.appgurjant.stickynotes.R
+import com.app.domain.model.TextStyleConfig
 
-data class TextFormatting(
-    val isBold: Boolean = false,
-    val isItalic: Boolean = false,
-    val isUnderlined: Boolean = false,
-    val fontSize: Int = 16,
-    val fontFamily: FontFamily = FontFamily(Font(R.font.inter_regular))
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,14 +57,14 @@ fun RichTextEditor(
     value: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    textFormatting: TextFormatting = TextFormatting(),
-    onFormatChange: (TextFormatting) -> Unit = {}
+    textFormatting: TextStyleConfig = TextStyleConfig(),
+    onFormatChange: (TextStyleConfig) -> Unit = {}
 ) {
-    var textFieldValue by remember(value) { 
-        mutableStateOf(TextFieldValue(text = value)) 
+    var textFieldValue by remember(value) {
+        mutableStateOf(TextFieldValue(text = value))
     }
-    
-    LaunchedEffect(value) {
+
+    LaunchedEffect(value){
         if (textFieldValue.text != value) {
             textFieldValue = TextFieldValue(text = value)
         }
@@ -94,15 +104,19 @@ fun RichTextEditor(
             ),
             textStyle = LocalTextStyle.current.merge(
                 TextStyle(
-                    fontWeight = if (textFormatting.isBold) FontWeight.Bold else FontWeight.Normal,
-                    fontStyle = if (textFormatting.isItalic) 
-                        androidx.compose.ui.text.font.FontStyle.Italic 
-                        else androidx.compose.ui.text.font.FontStyle.Normal,
-                    textDecoration = if (textFormatting.isUnderlined) 
+                    fontWeight = if (textFormatting.isBold)
+                        FontWeight.Bold else FontWeight.Normal,
+
+                    fontStyle = if (textFormatting.isItalic)
+                        FontStyle.Italic else FontStyle.Normal,
+
+                    textDecoration = if (textFormatting.isUnderline)
                         TextDecoration.Underline else TextDecoration.None,
+
                     fontSize = textFormatting.fontSize.sp,
-                    fontFamily = textFormatting.fontFamily,
-                    lineHeight = (textFormatting.fontSize * 1.5).sp
+                    lineHeight = (textFormatting.fontSize * 1.5).sp,
+
+                    fontFamily = getFontFamily(textFormatting.fontFamily)
                 )
             )
         )
@@ -111,23 +125,33 @@ fun RichTextEditor(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(horizontal = 15.dp)
                 .background(Color.White)
-                .navigationBarsPadding()
-                .padding(vertical = 8.dp, horizontal = 16.dp)
+                .border(0.1.dp, Color.Gray,RoundedCornerShape(20.dp))
+
         ) {
             FormattingToolbar(
                 textFormatting = textFormatting,
-                onFormatChange = onFormatChange,
+                onFormatChange ={
+                    onFormatChange(it)
+                } ,
                 modifier = Modifier.fillMaxWidth()
             )
         }
     }
 }
+fun getFontFamily(fontName: String): FontFamily {
+    return when (fontName) {
+        "Inter-Regular" -> FontFamily.Default
+        "Inter-Bold" -> FontFamily.SansSerif
+        else -> FontFamily.Default
+    }
+}
 
 @Composable
 fun FormattingToolbar(
-    textFormatting: TextFormatting,
-    onFormatChange: (TextFormatting) -> Unit,
+    textFormatting: TextStyleConfig,
+    onFormatChange: (TextStyleConfig) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -171,9 +195,9 @@ fun FormattingToolbar(
 
         // Underline button
         IconToggleButton(
-            checked = textFormatting.isUnderlined,
+            checked = textFormatting.isUnderline,
             onCheckedChange = {
-                onFormatChange(textFormatting.copy(isUnderlined = it))
+                onFormatChange(textFormatting.copy(isUnderline = it))
             },
             modifier = Modifier
                 .size(48.dp)
@@ -182,11 +206,26 @@ fun FormattingToolbar(
             Icon(
                 imageVector = Icons.Default.FormatUnderlined,
                 contentDescription = "Underline",
-                tint = if (textFormatting.isUnderlined) MaterialTheme.colorScheme.primary else Color.Gray
+                tint = if (textFormatting.isUnderline) MaterialTheme.colorScheme.primary else Color.Gray
             )
         }
-
-        Spacer(modifier = Modifier.width(16.dp))
+        // Theme Color
+//        // Italic button
+//        IconToggleButton(
+//            checked = textFormatting.isItalic,
+//            onCheckedChange = {
+////               Toast.makeText(Context(), "Color lens", Toast.LENGTH_SHORT).show()
+//            },
+//            modifier = Modifier
+//                .size(48.dp)
+//                .padding(4.dp)
+//        ) {
+//            Icon(
+//                imageVector = Icons.Default.ColorLens,
+//                contentDescription = "Color lens",
+//                tint = if (textFormatting.isItalic) MaterialTheme.colorScheme.primary else Color.Gray
+//            )
+//        }
 
         // Font size controls
         Row(
