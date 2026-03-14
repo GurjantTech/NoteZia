@@ -54,9 +54,9 @@ fun SetStatusBarColor(
 @Composable
 fun BannerAd(modifier: Modifier = Modifier) {
     AndroidView(
-        modifier = modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)),
+        modifier = modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).padding(horizontal = 10.dp),
         factory = { context ->
-            AdView(context).apply {
+            /*AdView(context).apply {
                 // Set the ad size (e.g., BANNER)
                 setAdSize(AdSize.BANNER)
                 // Use a test ad unit ID during development
@@ -71,7 +71,32 @@ fun BannerAd(modifier: Modifier = Modifier) {
                 loadAd(AdRequest.Builder().build()).let { it->
                     Log.e("AdsInfo",it.toString())
                 }
+            }*/
+
+            val adView = AdView(context)
+
+            val displayMetrics = context.resources.displayMetrics
+            val adWidthPixels = displayMetrics.widthPixels
+            val density = displayMetrics.density
+            val adWidth = (adWidthPixels / density).toInt()
+
+            adView.setAdSize(
+                AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(
+                    context,
+                    adWidth
+                )
+            )
+            if(BuildConfig.DEBUG){
+                adView.adUnitId = "ca-app-pub-3940256099942544/6300978111"
+            }else{
+                adView.adUnitId = "ca-app-pub-2294761279203706/7556154131"
             }
+
+            adView.loadAd(
+                AdRequest.Builder().build()
+            )
+
+            adView
         }
     )
 }

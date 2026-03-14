@@ -1,19 +1,14 @@
-package com.appgurjant.stickynotes.ui.screens
+package com.appgurjant.stickynotes.ui.screens.dashboard
 
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.speech.RecognizerIntent
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.RequiresPermission
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
@@ -66,8 +61,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -81,6 +74,9 @@ import com.appgurjant.stickynotes.components.filterChips
 import com.appgurjant.stickynotes.components.getCurrentAppLanguage
 import com.appgurjant.stickynotes.firebase.FirebaseEvent
 import com.appgurjant.stickynotes.navigation.Screen
+import com.appgurjant.stickynotes.ui.screens.ChecklistItem
+import com.appgurjant.stickynotes.ui.screens.NoteViewModel
+import com.appgurjant.stickynotes.ui.screens.WavyToolbar
 import com.appgurjant.stickynotes.ui.util.BannerAd
 import com.appgurjant.stickynotes.ui.util.SetStatusBarColor
 import com.appgurjant.stickynotes.ui.util.ShowWelcomeNotification
@@ -100,8 +96,15 @@ fun DashboardScreen(navController: NavController) {
     val context = LocalContext.current
     val shouldShowWelcomeNotification by noteViewModel.shouldShowWelcomeNotification.collectAsState()
     var notificationPermissionGranted by remember { mutableStateOf(false) }
-
     val notes by noteViewModel.filteredNotes.collectAsState()
+    val searchQuery by noteViewModel.searchQuery.collectAsState()
+    val focusManager = LocalFocusManager.current
+    val focusRequester = remember { FocusRequester() }
+    var spokenText by remember { mutableStateOf("") }
+    val noteZiaQuotes = context.resources.getStringArray(R.array.notezia_quotes)
+    val randomQuote = remember { noteZiaQuotes.random() }
+
+
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         SetStatusBarColor(color = colorResource(id = R.color.primary), darkIcons = true)
     }
@@ -115,6 +118,11 @@ fun DashboardScreen(navController: NavController) {
             it.noteType
         )
     }
+    // Add this state for tracking selected filter
+    var filteredNotes by remember { mutableStateOf(noteList) }
+
+    var selectedFilter by remember { mutableStateOf(NoteFilterType.ALL) }
+
     LaunchedEffect(notificationPermissionGranted) {
         if (shouldShowWelcomeNotification) {
             ShowWelcomeNotification(context, noteViewModel)
@@ -134,30 +142,7 @@ fun DashboardScreen(navController: NavController) {
         permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
-    DashboardUi(navController, noteList)
-}
 
-
-
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DashboardUi(
-    navController: NavController,
-    noteList: List<NoteType>
-) {
-    val noteViewModel: NoteViewModel = hiltViewModel()
-    val searchQuery by noteViewModel.searchQuery.collectAsState()
-    val focusManager = LocalFocusManager.current
-    val focusRequester = remember { FocusRequester() }
-    val context = LocalContext.current
-    var spokenText by remember { mutableStateOf("") }
-    val noteZiaQuotes = context.resources.getStringArray(R.array.notezia_quotes)
-    val randomQuote = remember { noteZiaQuotes.random() }
-    // Add this state for tracking selected filter
-    var filteredNotes by remember { mutableStateOf(noteList) }
-
-    var selectedFilter by remember { mutableStateOf(NoteFilterType.ALL) }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -200,7 +185,7 @@ fun DashboardUi(
         )
         {
             // Custom Toolbar
-            WavyToolbar(title = stringResource(R.string.my_notes) ,navController)
+            WavyToolbar(title = stringResource(R.string.my_notes), navController)
             Text(
                 stringResource(R.string.today_s_thought),
                 fontFamily = FontFamily(Font(R.font.inter_semibold)),
@@ -459,16 +444,11 @@ fun DashboardUi(
     }
 }
 
-// Preview usage
-@Preview
-@Composable
-fun PreviewDashboard() {
-    val dummyNotes = listOf(
-        NoteType("1", "Title 1", "Date 1", "Description 1"),
-        NoteType("1", "Title 2", "Date 2", "Description 2")
-    )
-    DashboardUi(rememberNavController(), dummyNotes)
-}
+
+
+
+
+
 
 
 data class NoteType(

@@ -1,6 +1,5 @@
 package com.appgurjant.stickynotes.navigation
 
-import SetPinBottomSheet
 import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
@@ -8,9 +7,8 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.appgurjant.stickynotes.AppUtil.AppEnum
 import com.appgurjant.stickynotes.ui.screens.CreateNewNote
-import com.appgurjant.stickynotes.ui.screens.DashboardScreen
+import com.appgurjant.stickynotes.ui.screens.dashboard.DashboardScreen
 
 import com.appgurjant.stickynotes.ui.screens.NoteDetailScreen
 import com.appgurjant.stickynotes.ui.screens.OnboardingScreen
