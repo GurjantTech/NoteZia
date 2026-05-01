@@ -43,6 +43,9 @@ class NoteViewModel @Inject constructor(
 
     private val _getAllNotesFromDB = MutableStateFlow<List<Note>>(emptyList())
     val getAllNotesFromDB: StateFlow<List<Note>> = _getAllNotesFromDB
+
+    private val _notesInitiallyLoaded = MutableStateFlow(false)
+    val notesInitiallyLoaded: StateFlow<Boolean> = _notesInitiallyLoaded.asStateFlow()
     private val _getNotesDetailByIdFromLocal= MutableStateFlow<Note?>(null)
     val getNotesDetailByIdFromLocal: StateFlow<Note?> = _getNotesDetailByIdFromLocal
     private val _notesUpdateInLocal= MutableStateFlow<StandardResponse?>(null)
@@ -107,6 +110,7 @@ class NoteViewModel @Inject constructor(
         viewModelScope.launch() {
             allNoteUseCase().collect { it ->
                 _getAllNotesFromDB.value = it
+                _notesInitiallyLoaded.value = true
             }
         }
     }
@@ -166,7 +170,15 @@ class NoteViewModel @Inject constructor(
       secureStorage.setManualAppPIN(pin)
     }
     fun getPin():String{
-        return secureStorage.getManualAppPIN().toString()
+        return secureStorage.getManualAppPIN().orEmpty()
+    }
+
+    fun setFingerprintEnabled(enabled: Boolean) {
+        secureStorage.setFingerprintEnabled(enabled)
+    }
+
+    fun isFingerprintEnabled(): Boolean {
+        return secureStorage.isFingerprintEnabled()
     }
 
 }

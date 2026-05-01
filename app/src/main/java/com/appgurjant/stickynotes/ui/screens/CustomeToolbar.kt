@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -54,7 +55,7 @@ fun CustomToolbar(
             .fillMaxWidth()
             .height(120.dp) // toolbar height
             .background(
-                color = Color(0xFF03A9F4), // Blue color
+                color = MaterialTheme.colorScheme.primary,
                 shape = CurvedBottomShape(curveHeight = 40f)
             ),
         contentAlignment = Alignment.Center
@@ -117,6 +118,7 @@ class CurvedBottomShape(private val curveHeight: Float = 60f) : Shape {
 fun WavyToolbar(
     title: String, navController: NavController
 ) {
+    val waveColor = MaterialTheme.colorScheme.primary
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -150,7 +152,7 @@ fun WavyToolbar(
 
             drawPath(
                 path = path,
-                color = Color(0xFF0171FF) // Blue
+                color = waveColor
             )
         }
 

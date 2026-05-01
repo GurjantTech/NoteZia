@@ -36,8 +36,31 @@
     <string name="delete_note">नोट हटाएँ</string>
     <string name="are_you_sure_you_want_to_delete_this_note">क्या आप वाकई इस नोट को हटाना चाहते हैं?</string>
     <string name="change_language">भाषा बदलें</string>
-    <string name="confirm">Confirm</string>
-    <string name="today_s_thought">💡 Today\'s Thought</string>
+    <string name="confirm">कन्फर्म</string>
+    <string name="today_s_thought">💡 आज का विचार</string>
+    <string name="light">लाइट</string>
+    <string name="dark">डार्क</string>
+    <string name="quick_actions">क्विक एक्शन</string>
+    <string name="rate_store">रेट स्टोर</string>
+    <string name="leave_feedback">फीडबैक दें</string>
+    <string name="select_your_preferred_language">अपनी पसंदीदा भाषा चुनें</string>
+    <string name="invite_friends_to_notezia">दोस्तों को NoteZia पर इनवाइट करें</string>
+    <string name="share_app">शेयर ऐप</string>
+    <string name="google_drive_cloud">गूगल ड्राइव क्लाउड</string>
+    <string name="last_backup_2_hours_ago">पिछला बैकअप: 2 घंटे पहले</string>
+    <string name="sync_with_drive">ड्राइव के साथ सिंक करें</string>
+    <string name="enable_password">पासवर्ड इनेबल करें</string>
+    <string name="require_code_to_open_notezia">NoteZia खोलने के लिए कोड चाहिए</string>
+    <string name="fingerprint_id">फिंगरप्रिंट ID</string>
+    <string name="fast_unlock_with_biometrics">बायोमेट्रिक्स के साथ फास्ट अनलॉक</string>
+    <string name="face_lock">फेस लॉक</string>
+    <string name="use_face_id_for_authentication">ऑथेंटिकेशन के लिए फेस ID का इस्तेमाल करें</string>
+    <string name="account_data"><![CDATA[ACCOUNT & DATA]]></string>
+    <string name="app_theme">APP थीम</string>
+    <string name="recent_stuff">Recent Stuff</string>
+    <string name="see_all">See All</string>
+    <string name="simple_note">Simple Note</string>
+    <string name="scan_qr">Scan QR</string>
 
     <string-array name="notezia_quotes">
         <item>"💡 आइडिया आया? नोटज़िया में तुरंत लिख लो!"</item>

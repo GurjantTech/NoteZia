@@ -4,9 +4,11 @@ sealed class Screen (val route : String) {
     object Splash : Screen("splash")
     object OnboardingScreen : Screen("onboarding")
     object DashboardScreen : Screen("dashboard")
-    object CreateNewNoteScreen : Screen("newNote/{noteType}?voiceNote={voiceNote}") {
-        fun passNoteType(noteType: String,voiceNote : String? = ""): String {
-            return "newNote/$noteType?voiceNote=$voiceNote"
+    object AppLockScreen : Screen("appLock")
+    object AllNotesScreen : Screen("allNotes")
+    object CreateNewNoteScreen : Screen("newNote/{noteType}?noteDescription={noteDescription}") {
+        fun passNoteType(noteType: String,noteDescription : String? = ""): String {
+            return "newNote/$noteType?noteDescription=$noteDescription"
         }
     }
     object NoteDetailScreen : Screen("noteDetail/{noteId}?noteType={noteType}") {

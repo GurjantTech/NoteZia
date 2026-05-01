@@ -45,6 +45,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -159,8 +160,8 @@ fun GradientBtn(text: String, onClick: () -> Unit) {
             .background(
                 brush = Brush.linearGradient(
                     colors = listOf(
-                        Color(0xFF0171FF), // Vibrant Blue
-                        Color(0xFF6EC1FF)  // Light Sky Blue
+                        MaterialTheme.colorScheme.primary,
+                        MaterialTheme.colorScheme.secondary
                     )
                 )
             )

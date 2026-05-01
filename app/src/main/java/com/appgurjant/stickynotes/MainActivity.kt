@@ -13,13 +13,17 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.rememberNavController
 
 import com.appgurjant.stickynotes.navigation.NoteZyNavGraph
 
 import com.appgurjant.stickynotes.ui.theme.NotezyAppTheme
+import com.appgurjant.stickynotes.ui.theme.ThemeViewModel
 import com.google.android.gms.ads.MobileAds
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
 import com.google.android.play.core.install.InstallStateUpdatedListener
@@ -32,7 +36,7 @@ import com.google.firebase.messaging.FirebaseMessaging
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     private val appUpdateManager by lazy {
         AppUpdateManagerFactory.create(this)
     }
@@ -53,7 +57,12 @@ class MainActivity : ComponentActivity() {
         requestedOrientation =  ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
         setContent {
-            NotezyAppTheme{
+            val themeViewModel: ThemeViewModel = hiltViewModel()
+            val isDarkTheme by themeViewModel.isDarkTheme.collectAsState()
+            NotezyAppTheme(
+                darkTheme = isDarkTheme,
+                dynamicColor = false
+            ) {
                 val navController = rememberNavController()
                 NoteZyNavGraph(navController)
             }

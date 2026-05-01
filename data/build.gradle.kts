@@ -22,6 +22,7 @@ dependencies {
     implementation(project(":domain"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
     // Room Database
     implementation(libs.androidx.rooms.runtime)
     kapt(libs.androidx.rooms.compiler)

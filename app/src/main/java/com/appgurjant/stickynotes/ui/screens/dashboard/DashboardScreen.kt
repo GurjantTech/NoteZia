@@ -3,34 +3,43 @@ package com.appgurjant.stickynotes.ui.screens.dashboard
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import androidx.activity.ComponentActivity
 import android.content.Intent
 import android.os.Build
 import android.speech.RecognizerIntent
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-
-import androidx.compose.foundation.lazy.itemsIndexed
-
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.LocalContentColor
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ChatBubbleOutline
+import androidx.compose.material.icons.filled.NotificationsNone
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -38,425 +47,703 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.appgurjant.stickynotes.AppUtil.AppEnum
-import com.appgurjant.stickynotes.AppUtil.NoteFilterType
 import com.appgurjant.stickynotes.AppUtil.userTimeFormat
 import com.appgurjant.stickynotes.R
-import com.appgurjant.stickynotes.components.ToggleFabMenu
-import com.appgurjant.stickynotes.components.filterChips
 import com.appgurjant.stickynotes.components.getCurrentAppLanguage
 import com.appgurjant.stickynotes.firebase.FirebaseEvent
 import com.appgurjant.stickynotes.navigation.Screen
-import com.appgurjant.stickynotes.ui.screens.ChecklistItem
 import com.appgurjant.stickynotes.ui.screens.NoteViewModel
-import com.appgurjant.stickynotes.ui.screens.WavyToolbar
-import com.appgurjant.stickynotes.ui.util.BannerAd
+import com.appgurjant.stickynotes.ui.theme.notezyPalette
 import com.appgurjant.stickynotes.ui.util.SetStatusBarColor
 import com.appgurjant.stickynotes.ui.util.ShowWelcomeNotification
-
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import java.util.Locale
 
+private data class DashboardTokens(
+    val pageBackground: Color,
+    val heading: Color,
+    val muted: Color,
+    val accent: Color,
+    val iconButtonBorder: Color,
+    val searchBg: Color,
+    val stripePink: Color,
+    val stripeTeal: Color,
+    val stripeYellow: Color
+)
 
-// Production usage
+private data class QuickActionStyle(
+    val cardBackground: Color,
+    val border: Color,
+    val iconContainerBackground: Color,
+    val iconTint: Color
+)
 
-@SuppressLint("MissingPermission")
 @Composable
-fun DashboardScreen(navController: NavController) {
-    val noteViewModel: NoteViewModel = hiltViewModel()
-    noteViewModel.getAllNotes()
-    val context = LocalContext.current
-    val shouldShowWelcomeNotification by noteViewModel.shouldShowWelcomeNotification.collectAsState()
-    var notificationPermissionGranted by remember { mutableStateOf(false) }
-    val notes by noteViewModel.filteredNotes.collectAsState()
-    val searchQuery by noteViewModel.searchQuery.collectAsState()
-    val focusManager = LocalFocusManager.current
-    val focusRequester = remember { FocusRequester() }
-    var spokenText by remember { mutableStateOf("") }
-    val noteZiaQuotes = context.resources.getStringArray(R.array.notezia_quotes)
-    val randomQuote = remember { noteZiaQuotes.random() }
-
-
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        SetStatusBarColor(color = colorResource(id = R.color.primary), darkIcons = true)
-    }
-    val noteList = notes.map {
-        NoteType(
-            it.noteId ?: "",
-            it.title ?: "",
-            it.timeStamp ?: "",
-            it.description ?: "",
-            it.contentJson,
-            it.noteType
-        )
-    }
-    // Add this state for tracking selected filter
-    var filteredNotes by remember { mutableStateOf(noteList) }
-
-    var selectedFilter by remember { mutableStateOf(NoteFilterType.ALL) }
-
-    LaunchedEffect(notificationPermissionGranted) {
-        if (shouldShowWelcomeNotification) {
-            ShowWelcomeNotification(context, noteViewModel)
-        }
-    }
-
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-        onResult = { isGranted ->
-            if (isGranted) {
-                notificationPermissionGranted = true
-            }
-        }
+private fun dashboardTokens(): DashboardTokens {
+    val palette = MaterialTheme.notezyPalette
+    return DashboardTokens(
+        pageBackground = palette.screenBackground,
+        heading = palette.textPrimary,
+        muted = palette.textSecondary,
+        accent = palette.brandPrimary,
+        iconButtonBorder = palette.outline,
+        searchBg = palette.surface,
+        stripePink = palette.brandPrimary,
+        stripeTeal = palette.successDot,
+        stripeYellow = palette.brandAccent
     )
-    LaunchedEffect(Unit) {
-        permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-    }
+}
 
-
-
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val matches = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
-
-            spokenText = matches?.firstOrNull() ?: ""
-            Log.e("speakNote",spokenText)
-            navController.navigate(
-                Screen.CreateNewNoteScreen.passNoteType(
-                    AppEnum.VoiceNote.name,
-                    spokenText
+@Composable
+private fun quickActionStyles(): List<QuickActionStyle> {
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    return remember(isDark) {
+        if (!isDark) {
+            listOf(
+                QuickActionStyle(
+                    cardBackground = Color(0xFFFEFCE8),
+                    border = Color(0xFFFDE68A),
+                    iconContainerBackground = Color(0xFFFEF9C3),
+                    iconTint = Color(0xFFD97706)
+                ),
+                QuickActionStyle(
+                    cardBackground = Color(0xFFF0FDFA),
+                    border = Color(0xFF99F6E4),
+                    iconContainerBackground = Color(0xFFCCFBF1),
+                    iconTint = Color(0xFF0D9488)
+                ),
+                QuickActionStyle(
+                    cardBackground = Color(0xFFEFF6FF),
+                    border = Color(0xFFBFDBFE),
+                    iconContainerBackground = Color(0xFFDBEAFE),
+                    iconTint = Color(0xFF2563EB)
+                ),
+                QuickActionStyle(
+                    cardBackground = Color(0xFFFFF7ED),
+                    border = Color(0xFFFED7AA),
+                    iconContainerBackground = Color(0xFFFFEDD5),
+                    iconTint = Color(0xFFEA580C)
+                )
+            )
+        } else {
+            listOf(
+                QuickActionStyle(
+                    cardBackground = Color(0xFF2A2618),
+                    border = Color(0xFF854D0E).copy(alpha = 0.55f),
+                    iconContainerBackground = Color(0xFF3D3314),
+                    iconTint = Color(0xFFFBBF24)
+                ),
+                QuickActionStyle(
+                    cardBackground = Color(0xFF152A26),
+                    border = Color(0xFF0F766E).copy(alpha = 0.55f),
+                    iconContainerBackground = Color(0xFF134038),
+                    iconTint = Color(0xFF5EEAD4)
+                ),
+                QuickActionStyle(
+                    cardBackground = Color(0xFF1A2230),
+                    border = Color(0xFF2563EB).copy(alpha = 0.45f),
+                    iconContainerBackground = Color(0xFF1E2D45),
+                    iconTint = Color(0xFF93C5FD)
+                ),
+                QuickActionStyle(
+                    cardBackground = Color(0xFF2A1F18),
+                    border = Color(0xFFEA580C).copy(alpha = 0.45f),
+                    iconContainerBackground = Color(0xFF3D2815),
+                    iconTint = Color(0xFFFDBA74)
                 )
             )
         }
     }
+}
 
-    LaunchedEffect(searchQuery) {
-        if (searchQuery.isEmpty()) {
-            focusManager.clearFocus()
+@SuppressLint("MissingPermission")
+@Composable
+fun DashboardScreen(navController: NavController) {
+    val tokens = dashboardTokens()
+    val noteViewModel: NoteViewModel = hiltViewModel(LocalContext.current as ComponentActivity)
+    noteViewModel.getAllNotes()
+
+    val context = LocalContext.current
+    val noteZiaQuotes = context.resources.getStringArray(R.array.notezia_quotes)
+    val randomQuote = remember { noteZiaQuotes.random() }
+    val notes by noteViewModel.filteredNotes.collectAsState()
+    val searchQuery by noteViewModel.searchQuery.collectAsState()
+    val shouldShowWelcomeNotification by noteViewModel.shouldShowWelcomeNotification.collectAsState()
+
+    val noteList = notes.map {
+        NoteType(
+            noteId = it.noteId ?: "",
+            title = it.title ?: "",
+            createdAt = it.timeStamp ?: "",
+            description = it.description ?: "",
+            typeOfNote = it.noteType
+        )
+    }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted && shouldShowWelcomeNotification) {
+            ShowWelcomeNotification(context, noteViewModel)
         }
     }
-    val gradient = Brush.verticalGradient(
-        colors = listOf(
-            Color(0xFFE3F2FD),
-            Color.White
-        )
-    )
+
+    val voiceLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val spoken = result.data
+                ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+                ?.firstOrNull()
+                .orEmpty()
+            navController.navigate(
+                Screen.CreateNewNoteScreen.passNoteType(AppEnum.VoiceNote.name, spoken)
+            )
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        SetStatusBarColor(color = tokens.pageBackground, darkIcons = true)
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(color = colorResource(R.color.primary))
+            .background(tokens.pageBackground)
             .systemBarsPadding()
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(gradient)
-        )
-        {
-            // Custom Toolbar
-            WavyToolbar(title = stringResource(R.string.my_notes), navController)
-            Text(
-                stringResource(R.string.today_s_thought),
-                fontFamily = FontFamily(Font(R.font.inter_semibold)),
-                fontSize = 14.sp,
-                modifier = Modifier.padding(horizontal = 10.dp)
+                .padding(horizontal = 18.dp)
+        ) {
+            Spacer(modifier = Modifier.height(14.dp))
+            DashboardHeader(
+                onNotificationClick = {},
+                onProfileClick = { navController.navigate(Screen.SettingScreen.route) }
             )
-            Text(randomQuote,
-                fontFamily = FontFamily(Font(R.font.inter_regular)),
-                modifier = Modifier.padding(vertical = 5.dp, horizontal = 10.dp),
-                style = TextStyle(
-                    fontSize = 12.sp
-                )
+            Spacer(modifier = Modifier.height(12.dp))
+            DashboardSearch(
+                query = searchQuery,
+                onQueryChange = noteViewModel::updateSearchQuery
             )
-
-
-            // Search bar for filtering notes
-            OutlinedCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(10.dp),
-                border = BorderStroke(0.1.dp, Color.LightGray),// 👈 Light border
-            )
-            {
-
-                TextField(
-                    value = searchQuery,
-                    singleLine = true,
-                    onValueChange = { noteViewModel.updateSearchQuery(it) },
-                    placeholder = { Text(stringResource(R.string.search_note_here)) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color.White)
-                        .focusRequester(focusRequester),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                        disabledContainerColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        disabledIndicatorColor = Color.Transparent
-                    ),
-                )
-            }
-
-
-            filterChips(selectedFilter) { it ->
-                Log.e("DashboardScreen", "Selected filter: $selectedFilter")
-                selectedFilter = it
-            }
-            BannerAd(modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 12.dp))
-            if (noteList.isNotEmpty()) {
-                filteredNotes = when (selectedFilter) {
-                    NoteFilterType.TEXT_NOTE -> noteList.filter { it.typeOfNote == AppEnum.TextNote.name }
-                    NoteFilterType.CHECKLIST -> noteList.filter { it.typeOfNote == AppEnum.CheckList.name }
-                    NoteFilterType.QUICK_CAPTURE -> noteList.filter { it.typeOfNote == AppEnum.QrNote.name }
-                    NoteFilterType.VOICE_NOTE -> noteList.filter { it.typeOfNote == AppEnum.VoiceNote.name }
-                    else -> noteList // ALL
+            Spacer(modifier = Modifier.height(10.dp))
+            DailyVibeCard(randomQuote)
+            Spacer(modifier = Modifier.height(14.dp))
+            QuickActionGrid(
+                onSimpleNote = {
+                    FirebaseEvent.logEvent(context, FirebaseEvent.blankNoteEvent)
+                    navController.navigate(Screen.CreateNewNoteScreen.passNoteType(AppEnum.TextNote.name))
+                },
+                onChecklist = {
+                    FirebaseEvent.logEvent(context, FirebaseEvent.checkListNoteEvent)
+                    navController.navigate(Screen.CreateNewNoteScreen.passNoteType(AppEnum.CheckList.name))
+                },
+                onScanQr = {
+                    FirebaseEvent.logEvent(context, FirebaseEvent.qrNoteEvent)
+                    navController.navigate(Screen.QrScanScreen.route)
+                },
+                onVoice = {
+                    when (getCurrentAppLanguage(context)) {
+                        "hi" -> {
+                            FirebaseEvent.logEvent(context, FirebaseEvent.VoiceNoteInHindiEvent)
+                            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "hi-IN")
+                                putExtra(RecognizerIntent.EXTRA_PROMPT, "कुछ बोलें...")
+                            }
+                            voiceLauncher.launch(intent)
+                        }
+                        else -> {
+                            FirebaseEvent.logEvent(context, FirebaseEvent.VoiceNoteInEnglishEvent)
+                            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                                putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+                                putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak something...")
+                            }
+                            voiceLauncher.launch(intent)
+                        }
+                    }
                 }
-            } else {
-                filteredNotes = noteList
-            }
-            if (filteredNotes.size < 1) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            RecentHeader(
+                onSeeAllClick = { navController.navigate(Screen.AllNotesScreen.route) }
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (noteList.isEmpty()) {
+                Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Text(
-                        stringResource(R.string.your_note_space_is_empty_create_your_first_note),
-                        fontSize = 20.sp,
-                        fontFamily = FontFamily(Font(R.font.inter_regular)),
-                        textAlign = TextAlign.Center,
-                        color = Color.LightGray,
-                        modifier = Modifier.padding(20.dp)
+                        text = "Your note space is empty.\nCreate your first note.",
+                        color = tokens.muted,
+                        fontSize = 14.sp,
+                        fontFamily = FontFamily(Font(R.font.inter_regular))
                     )
                 }
             } else {
                 LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 10.dp)
-                        .weight(1f),
+                    modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    itemsIndexed(filteredNotes) { index, note ->
-
-                        OutlinedCard(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = LocalIndication.current
-                                ) {
-                                    val noteId = filteredNotes[index].noteId
-                                    val noteType = filteredNotes[index].typeOfNote.toString()
-                                    navController.navigate(
-                                        Screen.NoteDetailScreen.passNoteId(
-                                            noteId,
-                                            noteType
-                                        )
+                    items(noteList.take(10)) { note ->
+                        RecentNoteCard(
+                            note = note,
+                            onClick = {
+                                navController.navigate(
+                                    Screen.NoteDetailScreen.passNoteId(
+                                        note.noteId,
+                                        note.typeOfNote.orEmpty()
                                     )
-                                },
-                            border = BorderStroke(0.1.dp, Color.LightGray),// 👈 Light border
-                            shape = MaterialTheme.shapes.medium,
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .background(Color.White)
-                                    .fillMaxWidth()
-                                    .padding(10.dp)
-                            ) {
-                                Text(
-                                    text = note.title,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    fontSize = 16.sp,
-                                    fontFamily = FontFamily(Font(R.font.inter_bold)),
                                 )
-                                Text(
-                                    text = String().userTimeFormat(note.createdAt),
-                                    fontSize = 12.sp,
-                                    color = Color.Gray,
-                                    fontFamily = FontFamily(Font(R.font.inter_regular)),
-                                )
-                                note.description.let {
-                                    if (it.isNotEmpty()) {
-                                        Text(
-                                            text = note.description,
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis,
-                                            fontSize = 14.sp,
-                                            fontFamily = FontFamily(Font(R.font.inter_regular)),
-                                        )
-                                    }
-                                }
-
-                                // Then in your code where you want to convert the JSON:
-                                if (!note.contentJson.isNullOrEmpty()) {
-                                    val checklistItems by produceState(
-                                        initialValue = emptyList<ChecklistItem>(),
-                                        note.contentJson
-                                    ) {
-                                        value = try {
-                                            val gson = Gson()
-                                            val type =
-                                                object : TypeToken<List<ChecklistItem>>() {}.type
-                                            gson.fromJson(note.contentJson, type)
-                                        } catch (e: Exception) {
-                                            emptyList()
-                                        }
-                                    }
-
-//                                    val gson = Gson()
-//                                    val type = object : TypeToken<List<ChecklistItem>>() {}.type
-//                                    val checklistItems: List<ChecklistItem> = gson.fromJson(note.contentJson, type)
-                                    // Now you can use checklistItems
-                                    if (checklistItems.isNotEmpty()) {
-                                        checklistItems.forEachIndexed { index, item ->
-                                            if (index < 2) {
-                                                Row(
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    modifier = Modifier.fillMaxWidth()
-                                                ) {
-                                                    Checkbox(
-                                                        checked = item.checked,
-                                                        onCheckedChange = { checked ->
-                                                            // Create a new list with the updated item
-                                                            checklistItems.mapIndexed { i, listItem ->
-                                                                if (i == index) listItem.copy(
-                                                                    checked = checked
-                                                                ) else listItem
-                                                            }
-                                                        }
-                                                    )
-                                                    Text(
-                                                        text = item.text,
-                                                        maxLines = 1,
-                                                        overflow = TextOverflow.Ellipsis,
-                                                        fontSize = 14.sp,
-                                                        textDecoration = if (item.checked) TextDecoration.LineThrough else TextDecoration.None,
-                                                        color = if (item.checked) Color.Gray else LocalContentColor.current
-                                                    )
-                                                }
-
-                                            }
-
-                                        }
-
-                                    }
-
-                                }
                             }
-                        }
+                        )
                     }
+                    item { Spacer(modifier = Modifier.height(88.dp)) }
                 }
             }
-
         }
-        ToggleFabMenu { selectedItem ->
-            when (selectedItem) {
-                AppEnum.VoiceNote.name -> {
 
-                    when (getCurrentAppLanguage(context)) {
-                        "hi" -> {
-                            FirebaseEvent.logEvent(context, FirebaseEvent.VoiceNoteInHindiEvent)
-
-                            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                                putExtra(
-                                    RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                                    RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
-                                )
-                                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "hi-IN")
-                                putExtra(RecognizerIntent.EXTRA_PROMPT, "कुछ बोलें...")
-                            }
-                            launcher.launch(intent)
-                        }
-
-                        else -> {
-                            FirebaseEvent.logEvent(context, FirebaseEvent.VoiceNoteInEnglishEvent)
-                            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                                putExtra(
-                                    RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                                    RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
-                                )
-                                putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
-                                putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak something...")
-                            }
-                            launcher.launch(intent)
-                        }
-                    }
-                }
-
-                AppEnum.Gallery.name -> {
-
-                }
-
-                AppEnum.QrNote.name -> {
-                    FirebaseEvent.logEvent(context, FirebaseEvent.qrNoteEvent)
-                    navController.navigate(Screen.QrScanScreen.route)
-                }
-
-                AppEnum.CheckList.name -> {
-                    FirebaseEvent.logEvent(context, FirebaseEvent.checkListNoteEvent)
-                    navController.navigate(Screen.CreateNewNoteScreen.passNoteType(AppEnum.CheckList.name))
-                }
-
-                AppEnum.TextNote.name -> {
-                    FirebaseEvent.logEvent(context, FirebaseEvent.blankNoteEvent)
-                    navController.navigate(Screen.CreateNewNoteScreen.passNoteType(AppEnum.TextNote.name))
-                }
+        DashboardBottomBar(
+            modifier = Modifier.align(Alignment.BottomCenter),
+            onHomeClick = {},
+            onBookmarkClick = {},
+            onChatClick = {},
+            onSettingsClick = { navController.navigate(Screen.SettingScreen.route) },
+            onAddClick = {
+                navController.navigate(Screen.CreateNewNoteScreen.passNoteType(AppEnum.TextNote.name))
             }
+        )
+    }
+}
 
+@Composable
+private fun DashboardHeader(
+    onNotificationClick: () -> Unit,
+    onProfileClick: () -> Unit
+) {
+    val tokens = dashboardTokens()
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "NoteZia",
+            fontSize = 33.sp,
+            fontFamily = FontFamily(Font(R.font.inter_bold)),
+            color = tokens.heading
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+//            CircleIconButton(icon = Icons.Default.NotificationsNone, onClick = onNotificationClick)
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.notezyPalette.surface)
+                    .border(1.dp, tokens.iconButtonBorder, CircleShape)
+                    .clickable(onClick = onProfileClick),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Person, contentDescription = "Profile", tint = tokens.heading, modifier = Modifier.size(18.dp))
+            }
         }
     }
 }
 
+@Composable
+private fun CircleIconButton(icon: ImageVector, onClick: () -> Unit) {
+    val tokens = dashboardTokens()
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.notezyPalette.surface)
+            .border(1.dp, tokens.iconButtonBorder, CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription = null, tint = tokens.heading, modifier = Modifier.size(18.dp))
+    }
+}
 
+@Composable
+private fun DashboardSearch(query: String, onQueryChange: (String) -> Unit) {
+    val tokens = dashboardTokens()
+    TextField(
+        value = query,
+        onValueChange = onQueryChange,
+        singleLine = true,
+        leadingIcon = {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = "Search",
+                tint = tokens.muted
+            )
+        },
+        placeholder = {
+            Text(
+                text = "Search your thoughts...",
+                color = tokens.muted,
+                fontFamily = FontFamily(Font(R.font.inter_regular)),
+                fontSize = 14.sp
+            )
+        },
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = tokens.searchBg,
+            unfocusedContainerColor = tokens.searchBg,
+            disabledContainerColor = tokens.searchBg,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+            disabledIndicatorColor = Color.Transparent
+        ),
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(52.dp)
+            .shadow(3.dp, RoundedCornerShape(14.dp))
+    )
+}
 
+@Composable
+private fun DailyVibeCard(randomQuote: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(100.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(Color(0xFF8F55FF), Color(0xFFE75BB5))
+                )
+            )
+            .padding(16.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(30.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFFFB596).copy(alpha = 0.22f))
+        )
+        Column {
+            Text(
+                text = "DAILY VIBE",
+                color = Color(0xFFF5DE8B),
+                fontSize = 12.sp,
+                fontFamily = FontFamily(Font(R.font.inter_semibold))
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = randomQuote,
+                color = Color.White,
+                fontSize = 16.sp,
+                lineHeight = 16.sp,
+                fontFamily = FontFamily(Font(R.font.inter_bold))
+            )
+        }
+    }
+}
 
+@Composable
+private fun QuickActionGrid(
+    onSimpleNote: () -> Unit,
+    onChecklist: () -> Unit,
+    onScanQr: () -> Unit,
+    onVoice: () -> Unit
+) {
+    val styles = quickActionStyles()
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+            QuickActionCard(
+                modifier = Modifier.weight(1f),
+                title = stringResource(R.string.simple_note),
+                style = styles[0],
+                iconRes = R.drawable.ic_blank_note,
+                onClick = onSimpleNote
+            )
+            QuickActionCard(
+                modifier = Modifier.weight(1f),
+                title = stringResource(R.string.check_list),
+                style = styles[1],
+                iconRes = R.drawable.ic_checklist,
+                onClick = onChecklist
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+            QuickActionCard(
+                modifier = Modifier.weight(1f),
+                title = stringResource(R.string.scan_qr),
+                style = styles[2],
+                iconRes = R.drawable.ic_qr_code,
+                onClick = onScanQr
+            )
+            QuickActionCard(
+                modifier = Modifier.weight(1f),
+                title = stringResource(R.string.voice_note),
+                style = styles[3],
+                iconRes = R.drawable.ic_voice_recorder,
+                onClick = onVoice
+            )
+        }
+    }
+}
 
+private val QuickActionCardShape = RoundedCornerShape(26.dp)
+private val QuickActionIconContainerShape = RoundedCornerShape(14.dp)
 
+@Composable
+private fun QuickActionCard(
+    modifier: Modifier,
+    title: String,
+    style: QuickActionStyle,
+    iconRes: Int,
+    onClick: () -> Unit
+) {
+    val tokens = dashboardTokens()
+    Card(
+        modifier = modifier
+            .height(118.dp)
+            .clip(QuickActionCardShape)
+            .border(1.dp, style.border, QuickActionCardShape)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            ),
+        shape = QuickActionCardShape,
+        colors = CardDefaults.cardColors(containerColor = style.cardBackground),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+            horizontalAlignment = Alignment.Start
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(QuickActionIconContainerShape)
+                    .background(style.iconContainerBackground),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(iconRes),
+                    contentDescription = title,
+                    tint = style.iconTint,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            Text(
+                text = title,
+                fontFamily = FontFamily(Font(R.font.inter_bold)),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = tokens.heading,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
 
+@Composable
+private fun RecentHeader(onSeeAllClick: () -> Unit) {
+    val tokens = dashboardTokens()
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = stringResource(R.string.recent_stuff),
+            fontFamily = FontFamily(Font(R.font.inter_bold)),
+            fontSize = 14.sp,
+            color = tokens.heading
+        )
+        Text(
+            text = stringResource(R.string.see_all),
+            fontFamily = FontFamily(Font(R.font.inter_semibold)),
+            fontSize = 12.sp,
+            color = tokens.accent,
+            modifier = Modifier.clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onSeeAllClick
+            )
+        )
+    }
+}
+
+@Composable
+private fun RecentNoteCard(note: NoteType, onClick: () -> Unit) {
+    val tokens = dashboardTokens()
+    val badge = when (note.typeOfNote) {
+        AppEnum.CheckList.name -> "URGENT"
+        AppEnum.QrNote.name -> "CREATIVE"
+        else -> "PLANNING"
+    }
+    val stripeColor = when (badge) {
+        "URGENT" -> tokens.stripeTeal
+        "CREATIVE" -> tokens.stripeYellow
+        else -> tokens.stripePink
+    }
+    val badgeBg = stripeColor.copy(alpha = 0.2f)
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.notezyPalette.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(6.dp)
+                    .height(50.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(stripeColor)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = note.title.ifEmpty { "Untitled Note" },
+                    fontFamily = FontFamily(Font(R.font.inter_bold)),
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = tokens.heading
+                )
+                Spacer(modifier = Modifier.height(5.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+//                    Text(
+//                        text = badge,
+//                        modifier = Modifier
+//                            .clip(RoundedCornerShape(8.dp))
+//                            .background(badgeBg)
+//                            .padding(horizontal = 8.dp, vertical = 2.dp),
+//                        fontFamily = FontFamily(Font(R.font.inter_semibold)),
+//                        fontSize = 10.sp,
+//                        color = stripeColor
+//                    )
+//                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = String().userTimeFormat(note.createdAt),
+                        fontFamily = FontFamily(Font(R.font.inter_regular)),
+                        fontSize = 10.sp,
+                        color = tokens.muted
+                    )
+                }
+            }
+//            Text(
+//                text = "⋮",
+//                color = DashboardTokens.muted,
+//                fontSize = 16.sp
+//            )
+        }
+    }
+}
+
+@Composable
+private fun DashboardBottomBar(
+    modifier: Modifier = Modifier,
+    onHomeClick: () -> Unit,
+    onBookmarkClick: () -> Unit,
+    onChatClick: () -> Unit,
+    onSettingsClick: () -> Unit,
+    onAddClick: () -> Unit
+) {
+    val tokens = dashboardTokens()
+    Box(modifier = modifier.fillMaxWidth()) {
+//        Card(
+//            modifier = Modifier
+//                .fillMaxWidth()
+//                .padding(horizontal = 12.dp, vertical = 8.dp),
+//            shape = RoundedCornerShape(16.dp),
+//            colors = CardDefaults.cardColors(containerColor = Color.White),
+//            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+//        ) {
+//            Row(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .padding(horizontal = 20.dp, vertical = 13.dp),
+//                horizontalArrangement = Arrangement.SpaceBetween,
+//                verticalAlignment = Alignment.CenterVertically
+//            ) {
+//                Icon(Icons.Default.Add, contentDescription = "Home", tint = DashboardTokens.accent, modifier = Modifier.clickable(onClick = onHomeClick))
+//                Icon(Icons.Default.NotificationsNone, contentDescription = "Bookmark", tint = DashboardTokens.muted, modifier = Modifier.clickable(onClick = onBookmarkClick))
+//                Icon(Icons.Default.ChatBubbleOutline, contentDescription = "Chat", tint = DashboardTokens.muted, modifier = Modifier.clickable(onClick = onChatClick))
+//                Icon(Icons.Default.Settings, contentDescription = "Settings", tint = DashboardTokens.muted, modifier = Modifier.clickable(onClick = onSettingsClick))
+//            }
+//        }
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(end = 22.dp)
+                .size(52.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.notezyPalette.darkSurface)
+                .clickable(onClick = onAddClick),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = "Add note",
+                tint = Color.White
+            )
+        }
+    }
+}
 
 data class NoteType(
     val noteId: String,
     val title: String,
     val createdAt: String,
     val description: String,
-    val contentJson: String? = "",
     val typeOfNote: String? = "",
 )
+
+@Preview(showBackground = true)
+@Composable
+fun DashboardScreenPreview() {
+    MaterialTheme {
+        DashboardScreen(rememberNavController())
+    }
+}
 

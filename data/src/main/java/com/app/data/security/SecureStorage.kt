@@ -55,4 +55,12 @@ class SecureStorage(context: Context) {
             KeyStoreManager.decrypt(iv, encrypted)
         } else null
     }
+
+    fun setFingerprintEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean("fingerprint_enabled", enabled).apply()
+    }
+
+    fun isFingerprintEnabled(): Boolean {
+        return prefs.getBoolean("fingerprint_enabled", false)
+    }
 }

@@ -11,13 +11,17 @@ import com.app.data.local.dao.NoteDao
 import com.app.data.local.entity.NoteEntity
 import com.app.data.repository.NoteRepositoryImpl
 import com.app.data.repository.SecureRepositoryImpl
+import com.app.data.repository.ThemeRepositoryImpl
 import com.app.data.security.SecureStorage
 import com.app.domain.repository.SecureRepository
 import com.app.domain.repository.NoteRepository
+import com.app.domain.repository.ThemeRepository
 import com.app.domain.usecase.AddNoteUseCase
 import com.app.domain.usecase.AllNoteUseCase
 import com.app.domain.usecase.DeleteNoteUseCase
 import com.app.domain.usecase.GetNoteDetailFromLocalUseCase
+import com.app.domain.usecase.GetThemeModeUseCase
+import com.app.domain.usecase.SetThemeModeUseCase
 import com.app.domain.usecase.UpdateNoteDetailFromLocalUseCase
 import dagger.Module
 import dagger.Provides
@@ -94,6 +98,12 @@ class AppModule {
     fun provideNoteRepository(noteDao: NoteDao): NoteRepository = NoteRepositoryImpl(noteDao)
 
     @Provides
+    @Singleton
+    fun provideThemeRepository(@ApplicationContext context: Context): ThemeRepository {
+        return ThemeRepositoryImpl(context)
+    }
+
+    @Provides
     fun addNoteUseCase(noteRepository: NoteRepository) = AddNoteUseCase(noteRepository)
     @Provides
     fun allNoteUseCase(noteRepository: NoteRepository) = AllNoteUseCase(noteRepository)
@@ -105,6 +115,16 @@ class AppModule {
 
     @Provides
     fun deleteNoteUseCase(noteRepository: NoteRepository) = DeleteNoteUseCase(noteRepository)
+
+    @Provides
+    fun provideGetThemeModeUseCase(themeRepository: ThemeRepository): GetThemeModeUseCase {
+        return GetThemeModeUseCase(themeRepository)
+    }
+
+    @Provides
+    fun provideSetThemeModeUseCase(themeRepository: ThemeRepository): SetThemeModeUseCase {
+        return SetThemeModeUseCase(themeRepository)
+    }
 
 
 

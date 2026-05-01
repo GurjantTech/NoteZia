@@ -8,11 +8,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.appgurjant.stickynotes.ui.screens.CreateNewNote
+import com.appgurjant.stickynotes.ui.screens.allnotes.AllNotesScreen
 import com.appgurjant.stickynotes.ui.screens.dashboard.DashboardScreen
-
 import com.appgurjant.stickynotes.ui.screens.NoteDetailScreen
 import com.appgurjant.stickynotes.ui.screens.OnboardingScreen
 import com.appgurjant.stickynotes.ui.screens.qrScanner.QrScanScreen
+import com.appgurjant.stickynotes.ui.screens.security.AppLockScreen
 import com.appgurjant.stickynotes.ui.screens.SplashScreen
 
 import com.appgurjant.stickynotes.ui.screens.settings.SettingScreen
@@ -30,14 +31,20 @@ fun NoteZyNavGraph(navController:NavHostController){
      composable(Screen.DashboardScreen.route){
          DashboardScreen(navController)
      }
+     composable(Screen.AppLockScreen.route) {
+         AppLockScreen(navController)
+     }
+     composable(Screen.AllNotesScreen.route) {
+         AllNotesScreen(navController)
+     }
      composable(Screen.CreateNewNoteScreen.route,arguments = listOf(
          navArgument("noteType") { type = NavType.StringType },
-         navArgument("voiceNote") { type = NavType.StringType }
+         navArgument("noteDescription") { type = NavType.StringType }
      )){backStackEntry->
          val noteType = backStackEntry.arguments?.getString("noteType").toString()
-         val voiceNote = backStackEntry.arguments?.getString("voiceNote").toString()
-         Log.e("NoteZyNavGraph", "noteType: $noteType voiceNote: $voiceNote")
-         CreateNewNote(navController,noteType,voiceNote)
+         val noteDescription = backStackEntry.arguments?.getString("noteDescription").toString()
+         Log.e("NoteZyNavGraph", "noteType: $noteType noteDescription: $noteDescription")
+         CreateNewNote(navController,noteType,noteDescription)
      }
      composable(Screen.NoteDetailScreen.route) { backStackEntry->
          val noteId = backStackEntry.arguments?.getString("noteId").toString()
