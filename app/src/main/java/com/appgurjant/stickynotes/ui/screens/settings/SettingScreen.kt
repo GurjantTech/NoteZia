@@ -49,7 +49,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
+
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -70,8 +70,12 @@ import com.appgurjant.stickynotes.ui.screens.NoteViewModel
 import com.appgurjant.stickynotes.ui.theme.ThemeViewModel
 import com.appgurjant.stickynotes.ui.theme.notezyPalette
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.Alignment
 import com.appgurjant.stickynotes.ui.util.BannerAd
 import com.appgurjant.stickynotes.ui.screens.settings.SetPinBottomSheet
+
+private const val NOTEZIA_PRIVACY_POLICY_URL =
+    "https://sites.google.com/view/notezia-privacy-policy?usp=sharing"
 
 @Composable
 fun SettingScreen(navController: NavController) {
@@ -180,8 +184,8 @@ fun SettingScreen(navController: NavController) {
             FirebaseEvent.logEvent(context, FirebaseEvent.changeLanguageEvent)
             openLocaleSettings(context)
         },
-        onPrivacyClick = { openAppInPlayStore(context) },
-        onTermsClick = { openAppInPlayStore(context) },
+        onPrivacyClick = { openUrlInBrowser(context, NOTEZIA_PRIVACY_POLICY_URL) },
+        onTermsClick = { openUrlInBrowser(context, NOTEZIA_PRIVACY_POLICY_URL) },
         driveSyncClick = { showToast(context,"Coming Soon") }
     )
 }
@@ -400,7 +404,7 @@ private fun ThemeCard(
         ) {
             Text(
                 text = title,
-                color = if(title=="DARK")  palette.white else palette.textPrimary,
+                color = if(!isLight) palette.white else palette.textPrimary,
                 fontFamily = FontFamily(Font(R.font.inter_bold)),
                 fontSize = 15.sp
             )
@@ -599,7 +603,8 @@ private fun QuickActionsRow(
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             QuickActionTile(
                 modifier = Modifier.weight(1f),
@@ -639,12 +644,12 @@ private fun QuickActionTile(
     val palette = MaterialTheme.notezyPalette
     CardShell(
         modifier = modifier
-            .height(150.dp)
+            .height(110.dp)
             .clickable(onClick = onClick),
         bg = bg
     ) {
         // CardShell already applies padding; keep inner padding smaller to avoid clipping.
-        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp), verticalArrangement = Arrangement.Top) {
+        Column(modifier = Modifier.padding(horizontal = 10.dp), verticalArrangement = Arrangement.SpaceBetween) {
             Box(
                 modifier = Modifier
                     .size(40.dp)
@@ -707,6 +712,14 @@ private fun openLocaleSettings(context: Context) {
         }
     } catch (_: Exception) {
         // no-op
+    }
+}
+
+private fun openUrlInBrowser(context: Context, url: String) {
+    try {
+        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+    } catch (_: Exception) {
+
     }
 }
 

@@ -26,6 +26,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.view.WindowCompat
 import com.appgurjant.stickynotes.BuildConfig
+
 import com.appgurjant.stickynotes.R
 import com.appgurjant.stickynotes.ui.screens.NoteViewModel
 import com.google.android.gms.ads.AdRequest
@@ -117,7 +118,7 @@ fun ShowWelcomeNotification(context: Context, noteViewModel: NoteViewModel) {
         manager.createNotificationChannel(channel)
     }
     val notification = NotificationCompat.Builder(context, channelId)
-        .setSmallIcon(R.drawable.app_logo_without_bg)
+        .setSmallIcon(R.drawable.ic_launcher_playstore)
         .setContentTitle("Welcome to NoteZia 🎉")
         .setContentText("Thanks for installing! Let’s get started.")
         .setPriority(NotificationCompat.PRIORITY_HIGH)

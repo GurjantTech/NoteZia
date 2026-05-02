@@ -1,12 +1,12 @@
 package com.appgurjant.stickynotes.di
 
-import KeyStoreManager
 import android.content.Context
 import android.util.Log
 import androidx.room.Room
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.app.data.local.NoteDatabase
+import com.app.data.local.NoteDatabaseFiles
 import com.app.data.local.dao.NoteDao
 import com.app.data.local.entity.NoteEntity
 import com.app.data.repository.NoteRepositoryImpl
@@ -62,9 +62,12 @@ class AppModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): NoteDatabase {
-        return Room.databaseBuilder(context,
-            NoteDatabase::class.java, // <-- Directly accessed from Data module
-            "notezy_db")
+        NoteDatabaseFiles.preparePlainSqliteDatabase(context)
+        return Room.databaseBuilder(
+            context,
+            NoteDatabase::class.java,
+            NoteDatabaseFiles.DATABASE_NAME
+        )
             .addMigrations(Migration_1_2)
             .fallbackToDestructiveMigration()
             .build()

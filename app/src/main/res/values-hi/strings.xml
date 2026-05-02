@@ -57,10 +57,22 @@
     <string name="use_face_id_for_authentication">ऑथेंटिकेशन के लिए फेस ID का इस्तेमाल करें</string>
     <string name="account_data"><![CDATA[ACCOUNT & DATA]]></string>
     <string name="app_theme">APP थीम</string>
-    <string name="recent_stuff">Recent Stuff</string>
-    <string name="see_all">See All</string>
-    <string name="simple_note">Simple Note</string>
-    <string name="scan_qr">Scan QR</string>
+    <string name="recent_stuff">हाल की चीज़ें</string>
+    <string name="see_all">सभी देखें</string>
+    <string name="simple_note">सिंपल नोट</string>
+    <string name="scan_qr">स्कैन QR</string>
+    <string name="all_notes">सभी नोट्स</string>
+    <string name="all_notes_empty_title">अभी तक कोई नोट नहीं</string>
+    <string name="all_notes_empty_subtitle">डैशबोर्ड से एक नोट बनाएं और यह यहां दिखाई देगा।</string>
+    <string name="all_notes_filtered_empty_title">कोई नोट नहीं मिला</string>
+    <string name="all_notes_filtered_empty_subtitle">कोई दूसरा नोट टाइप फ़िल्टर आज़माएँ।</string>
+    <string name="all_notes_checklist_preview">चेकलिस्ट</string>
+    <string name="all_notes_no_preview">नहीं विवरण</string>
+    <string name="cd_navigate_back">वापस</string>
+    <string name="enable_biometric">बायोमेट्रिक चालू करें</string>
+    <string name="biometric_unlock_subtitle">NoteZia को अनलॉक करने के लिए चेहरे या फ़िंगरप्रिंट का इस्तेमाल करें</string>
+    <string name="validation_description_required">सेव करने से पहले कृपया नोट का विवरण जोड़ें।</string>
+    <string name="validation_checklist_required">कृपया कम से कम एक चेकलिस्ट आइटम जोड़ें।</string>
 
     <string-array name="notezia_quotes">
         <item>"💡 आइडिया आया? नोटज़िया में तुरंत लिख लो!"</item>

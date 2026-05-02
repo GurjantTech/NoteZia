@@ -19,8 +19,8 @@ android {
         applicationId = "com.appgurjant.stickynotes"
         minSdk = 24
         targetSdk = 36
-        versionCode = 24
-        versionName = "4.0.6"
+        versionCode = 26
+        versionName = "4.0.7"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
             // For ndk-build, instead use the ndkBuild block.
@@ -134,19 +134,17 @@ dependencies {
 
     // security
     // Security Crypto for encrypted preferences and file storage
-    implementation("androidx.security:security-crypto:1.1.0")
+    implementation(libs.androidx.security.crypto)
 
     // For encrypted SharedPreferences
-    implementation("androidx.security:security-crypto-ktx:1.1.0")
+    implementation(libs.androidx.security.crypto.ktx)
 
-    // For encrypting large files
-    implementation("net.zetetic:android-database-sqlcipher:4.5.4" )
-    implementation("androidx.sqlite:sqlite-ktx:2.3.1")
+    implementation(libs.androidx.sqlite.ktx)
 
     implementation(libs.androidx.biometric)
-    implementation("com.google.accompanist:accompanist-systemuicontroller:0.30.1")
+    implementation(libs.accompanist.systemuicontroller)
 
-    implementation("com.google.android.gms:play-services-ads:23.0.0")
+    implementation(libs.play.services.ads)
 
     implementation(libs.kotlinx.coroutines.android)
 

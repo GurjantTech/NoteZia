@@ -54,8 +54,7 @@
     <string name="require_code_to_open_notezia">Require code to open NoteZia</string>
     <string name="fingerprint_id">Fingerprint ID</string>
     <string name="fast_unlock_with_biometrics">Fast unlock with Biometrics</string>
-    <string name="enable_biometric">Enable Biometric</string>
-    <string name="biometric_unlock_subtitle">Use face or fingerprint to unlock NoteZia</string>
+
     <string name="face_lock">Face Lock</string>
     <string name="use_face_id_for_authentication">Use Face ID for authentication</string>
     <string name="account_data"><![CDATA[ACCOUNT & DATA]]></string>
@@ -70,6 +69,8 @@
     <string name="all_notes_checklist_preview">Checklist</string>
     <string name="all_notes_no_preview">No description</string>
     <string name="cd_navigate_back">Back</string>
+    <string name="enable_biometric">Enable Biometric</string>
+    <string name="biometric_unlock_subtitle">Use face or fingerprint to unlock NoteZia</string>
     <string name="simple_note">Simple Note</string>
     <string name="scan_qr">Scan QR</string>
 
