@@ -19,8 +19,8 @@ android {
         applicationId = "com.appgurjant.stickynotes"
         minSdk = 24
         targetSdk = 36
-        versionCode = 26
-        versionName = "4.0.7"
+        versionCode = 29
+        versionName = "4.0.8"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
             // For ndk-build, instead use the ndkBuild block.
@@ -30,7 +30,14 @@ android {
             }
         }
     }
-
+    signingConfigs {
+        create("release") {
+            storeFile = file("/home/gurjantsingh/Desktop/MobileApps/NotezyApp/NotezyApp/app/stickyanimationnote.jks")
+            storePassword = "123456gG"
+            keyAlias = "stickyanimationnote"
+            keyPassword = "123456gG"
+        }
+    }
     packagingOptions {
         jniLibs {
             useLegacyPackaging = true

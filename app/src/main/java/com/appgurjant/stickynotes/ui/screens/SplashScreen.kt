@@ -98,16 +98,6 @@ fun SplashScreen(navController: NavController) {
                 color = palette.brandPrimary
             )
         }
-
-        Text(
-            text = "App Version : ${BuildConfig.VERSION_NAME}",
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 24.dp),
-            fontSize = 12.sp,
-            color = palette.brandPrimary.copy(alpha = 0.9f),
-            fontFamily = FontFamily(Font(R.font.inter_regular))
-        )
     }
 }
 

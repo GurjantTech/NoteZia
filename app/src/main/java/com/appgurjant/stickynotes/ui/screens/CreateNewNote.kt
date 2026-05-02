@@ -59,6 +59,7 @@ import com.appgurjant.stickynotes.R
 import com.appgurjant.stickynotes.firebase.FirebaseEvent
 import com.appgurjant.stickynotes.navigation.Screen
 import com.appgurjant.stickynotes.ui.theme.notezyPalette
+import com.appgurjant.stickynotes.ui.util.BannerAd
 import com.google.gson.Gson
 import java.util.Locale
 
@@ -240,6 +241,11 @@ fun CreateNewNote(navController: NavController, noteType: String, noteDescriptio
             onSketch = {
 
             }
+        )
+        BannerAd(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp)
         )
     }
 }

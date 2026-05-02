@@ -16,15 +16,18 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -38,8 +41,11 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FabPosition
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -77,6 +83,7 @@ import com.appgurjant.stickynotes.firebase.FirebaseEvent
 import com.appgurjant.stickynotes.navigation.Screen
 import com.appgurjant.stickynotes.ui.screens.NoteViewModel
 import com.appgurjant.stickynotes.ui.theme.notezyPalette
+import com.appgurjant.stickynotes.ui.util.BannerAd
 import com.appgurjant.stickynotes.ui.util.SetStatusBarColor
 import com.appgurjant.stickynotes.ui.util.ShowWelcomeNotification
 import java.util.Locale
@@ -232,15 +239,25 @@ fun DashboardScreen(navController: NavController) {
         SetStatusBarColor(color = tokens.pageBackground, darkIcons = true)
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(tokens.pageBackground)
-            .systemBarsPadding()
-    ) {
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = tokens.pageBackground,
+        floatingActionButton = {
+            DashboardAddNoteFab(
+                onClick = {
+                    navController.navigate(Screen.CreateNewNoteScreen.passNoteType(AppEnum.TextNote.name))
+                }
+            )
+        },
+        floatingActionButtonPosition = FabPosition.End,
+        bottomBar = {
+            DashboardBannerBar()
+        }
+    ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(paddingValues)
                 .padding(horizontal = 18.dp)
         ) {
             Spacer(modifier = Modifier.height(14.dp))
@@ -254,7 +271,9 @@ fun DashboardScreen(navController: NavController) {
                 onQueryChange = noteViewModel::updateSearchQuery
             )
             Spacer(modifier = Modifier.height(10.dp))
+
             DailyVibeCard(randomQuote)
+
             Spacer(modifier = Modifier.height(14.dp))
             QuickActionGrid(
                 onSimpleNote = {
@@ -310,6 +329,7 @@ fun DashboardScreen(navController: NavController) {
             } else {
                 LazyColumn(
                     modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(bottom = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(noteList.take(10)) { note ->
@@ -325,21 +345,9 @@ fun DashboardScreen(navController: NavController) {
                             }
                         )
                     }
-                    item { Spacer(modifier = Modifier.height(88.dp)) }
                 }
             }
         }
-
-        DashboardBottomBar(
-            modifier = Modifier.align(Alignment.BottomCenter),
-            onHomeClick = {},
-            onBookmarkClick = {},
-            onChatClick = {},
-            onSettingsClick = { navController.navigate(Screen.SettingScreen.route) },
-            onAddClick = {
-                navController.navigate(Screen.CreateNewNoteScreen.passNoteType(AppEnum.TextNote.name))
-            }
-        )
     }
 }
 
@@ -371,7 +379,7 @@ private fun DashboardHeader(
                     .clickable(onClick = onProfileClick),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Person, contentDescription = "Profile", tint = tokens.heading, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.Settings, contentDescription = "Settings", tint = tokens.heading, modifier = Modifier.size(18.dp))
             }
         }
     }
@@ -436,7 +444,7 @@ private fun DailyVibeCard(randomQuote: String) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(100.dp)
+            .wrapContentHeight()
             .clip(RoundedCornerShape(10.dp))
             .background(
                 Brush.linearGradient(
@@ -463,7 +471,7 @@ private fun DailyVibeCard(randomQuote: String) {
             Text(
                 text = randomQuote,
                 color = Color.White,
-                fontSize = 16.sp,
+                fontSize = 14.sp,
                 lineHeight = 16.sp,
                 fontFamily = FontFamily(Font(R.font.inter_bold))
             )
@@ -529,7 +537,7 @@ private fun QuickActionCard(
     val tokens = dashboardTokens()
     Card(
         modifier = modifier
-            .height(118.dp)
+            .height(96.dp)
             .clip(QuickActionCardShape)
             .border(1.dp, style.border, QuickActionCardShape)
             .clickable(
@@ -544,8 +552,8 @@ private fun QuickActionCard(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.Start
         ) {
             Box(
@@ -679,55 +687,33 @@ private fun RecentNoteCard(note: NoteType, onClick: () -> Unit) {
     }
 }
 
+/** Banner strip at the bottom of the screen; [navigationBarsPadding] keeps it above system gestures. */
 @Composable
-private fun DashboardBottomBar(
-    modifier: Modifier = Modifier,
-    onHomeClick: () -> Unit,
-    onBookmarkClick: () -> Unit,
-    onChatClick: () -> Unit,
-    onSettingsClick: () -> Unit,
-    onAddClick: () -> Unit
-) {
-    val tokens = dashboardTokens()
-    Box(modifier = modifier.fillMaxWidth()) {
-//        Card(
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .padding(horizontal = 12.dp, vertical = 8.dp),
-//            shape = RoundedCornerShape(16.dp),
-//            colors = CardDefaults.cardColors(containerColor = Color.White),
-//            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-//        ) {
-//            Row(
-//                modifier = Modifier
-//                    .fillMaxWidth()
-//                    .padding(horizontal = 20.dp, vertical = 13.dp),
-//                horizontalArrangement = Arrangement.SpaceBetween,
-//                verticalAlignment = Alignment.CenterVertically
-//            ) {
-//                Icon(Icons.Default.Add, contentDescription = "Home", tint = DashboardTokens.accent, modifier = Modifier.clickable(onClick = onHomeClick))
-//                Icon(Icons.Default.NotificationsNone, contentDescription = "Bookmark", tint = DashboardTokens.muted, modifier = Modifier.clickable(onClick = onBookmarkClick))
-//                Icon(Icons.Default.ChatBubbleOutline, contentDescription = "Chat", tint = DashboardTokens.muted, modifier = Modifier.clickable(onClick = onChatClick))
-//                Icon(Icons.Default.Settings, contentDescription = "Settings", tint = DashboardTokens.muted, modifier = Modifier.clickable(onClick = onSettingsClick))
-//            }
-//        }
+private fun DashboardBannerBar() {
+    BannerAd(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(start = 12.dp, top = 8.dp, end = 12.dp, bottom = 12.dp)
+    )
+}
 
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(end = 22.dp)
-                .size(52.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.notezyPalette.darkSurface)
-                .clickable(onClick = onAddClick),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = "Add note",
-                tint = Color.White
-            )
-        }
+/** End-aligned FAB; Scaffold places it above [bottomBar] with standard bottom-end insets. */
+@Composable
+private fun DashboardAddNoteFab(onClick: () -> Unit) {
+    FloatingActionButton(
+        onClick = onClick,
+        modifier = Modifier
+            .size(52.dp)
+            .padding(end = 4.dp, bottom = 6.dp),
+        containerColor = MaterialTheme.notezyPalette.darkSurface,
+        contentColor = Color.White,
+        shape = CircleShape
+    ) {
+        Icon(
+            imageVector = Icons.Default.Add,
+            contentDescription = stringResource(R.string.new_note)
+        )
     }
 }
 
