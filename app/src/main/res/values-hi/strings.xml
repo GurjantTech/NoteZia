@@ -73,6 +73,45 @@
     <string name="biometric_unlock_subtitle">NoteZia को अनलॉक करने के लिए चेहरे या फ़िंगरप्रिंट का इस्तेमाल करें</string>
     <string name="validation_description_required">सेव करने से पहले कृपया नोट का विवरण जोड़ें।</string>
     <string name="validation_checklist_required">कृपया कम से कम एक चेकलिस्ट आइटम जोड़ें।</string>
+    <string name="continue_with_google">Google के साथ जारी रखें</string>
+    <string name="access_your_notes_on_all_devices">सभी डिवाइस पर अपने नोट्स एक्सेस करें</string>
+    <string name="sync_with_google">Google के साथ सिंक करें</string>
+    <string name="sync">सिंक करें</string>
+    <string name="your_notes">आपके नोट्स</string>
+    <string name="back_up_and_access_your_notes_securely_across_all_your_devices">अपने सभी डिवाइस पर सुरक्षित रूप से अपने नोट्स का बैकअप लें और उन्हें एक्सेस करें</string>
+
+    <string name="onboarding_headline_line1">अपनी चीज़ों को व्यवस्थित करें</string>
+    <string name="onboarding_headline_line2">अव्यवस्था।</string>
+    <string name="onboarding_subtitle">आपके विचारों की गति के लिए डिज़ाइन किया गया नोट लेने वाला ऐप।</string>
+    <string name="sign_in_with_google">Google से साइन इन करें</string>
+    <string name="onboarding_legal_prefix">जारी रखकर, आप हमारी </string>
+    <string name="onboarding_legal_and"> और </string>
+    <string name="terms_of_service">सेवा की शर्तें</string>
+    <string name="privacy_policy">प्राइवेसी पॉलिसी</string>
+    <string name="onboarding_cloud_sync">क्लाउड सिंक</string>
+    <string name="cd_theme_toggle">कलर थीम बदलें</string>
+    <string name="cd_onboarding_logo">NoteZia</string>
+    <string name="unable_to_open_link">लिंक नहीं खुल पा रहा है</string>
+    <string name="sync_and_access">सभी डिवाइस पर अपने नोट्स एक्सेस करें</string>
+
+    <!-- क्लाउड सिंक -->
+    <string name="cloud_sync_subtitle">अपने नोट्स का बैकअप लें और सभी डिवाइस पर उन्हें एक्सेस करें</string>
+    <string name="sync_now">अभी सिंक करें</string>
+    <string name="sync_in_progress">सिंक हो रहा है…</string>
+    <string name="sync_completed">सभी नोट्स सिंक हो गए</string>
+    <string name="sync_partial">%2$d में से %1$d नोट्स सिंक हो गए</string>
+    <string name="sync_failed">सिंक फेल: %1$s</string>
+    <string name="sync_no_pending">सिंक करने के लिए कोई नोट्स उपलब्ध नहीं हैं</string>
+    <string name="logout">लॉग आउट करें</string>
+    <string name="logout_confirm_title">Google से साइन आउट करें?</string>
+    <string name="logout_confirm_message">आपके नोट्स इसी डिवाइस पर रहेंगे। क्लाउड सिंक फिर से शुरू करने के लिए कभी भी फिर से साइन इन करें।</string>
+    <string name="signed_out">साइन आउट किया गया</string>
+    <string name="signed_in_as">%1$s के तौर पर साइन इन किया गया</string>
+    <string name="sign_in_failed">साइन-इन फेल: %1$s</string>
+    <string name="cd_user_avatar">यूज़र अवतार</string>
+    <string name="note_sync_status_synced">सिंक किया गया</string>
+    <string name="note_sync_status_pending">सिंक नहीं किया गया</string>
+    <string name="sync_my_notes">मेरे नोट्स सिंक करें</string>
 
     <string-array name="notezia_quotes">
         <item>"💡 आइडिया आया? नोटज़िया में तुरंत लिख लो!"</item>

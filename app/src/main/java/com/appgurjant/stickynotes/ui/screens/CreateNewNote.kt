@@ -2,6 +2,7 @@ package com.appgurjant.stickynotes.ui.screens
 
 import android.content.Intent
 import android.speech.RecognizerIntent
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -60,6 +61,10 @@ import com.appgurjant.stickynotes.firebase.FirebaseEvent
 import com.appgurjant.stickynotes.navigation.Screen
 import com.appgurjant.stickynotes.ui.theme.notezyPalette
 import com.appgurjant.stickynotes.ui.util.BannerAd
+import com.appgurjant.stickynotes.ui.util.ads.AdCounterKeys
+import com.appgurjant.stickynotes.ui.util.ads.rememberAdsConfig
+import com.appgurjant.stickynotes.ui.util.ads.rememberInterstitialAdManager
+import androidx.fragment.app.FragmentActivity
 import com.google.gson.Gson
 import java.util.Locale
 
@@ -68,6 +73,8 @@ fun CreateNewNote(navController: NavController, noteType: String, noteDescriptio
     val viewModel: NoteViewModel = hiltViewModel()
     val palette = MaterialTheme.notezyPalette
     val context = LocalContext.current
+    val interstitialAdManager = rememberInterstitialAdManager()
+    val adsConfig = rememberAdsConfig()
     val noteState = viewModel.noteSaveState.collectAsState().value
 
     var currentNoteType by remember(noteType) { mutableStateOf(noteType) }
@@ -93,6 +100,13 @@ fun CreateNewNote(navController: NavController, noteType: String, noteDescriptio
         noteState?.let {
             FirebaseEvent.logEvent(context, FirebaseEvent.noteCreatedSuccessEvent)
             navController.popBackStack(Screen.CreateNewNoteScreen.route, true)
+            (context as? FragmentActivity)?.let { activity ->
+                interstitialAdManager.showAdEveryN(
+                    activity = activity,
+                    counterKey = AdCounterKeys.NOTE_CREATED,
+                    threshold = adsConfig.interstitialShowThreshold
+                )
+            }
         }
     }
 
@@ -399,6 +413,7 @@ private fun saveNewNote(
     when (noteType) {
         AppEnum.CheckList.name -> {
             val json = Gson().toJson(checklist)
+            Log.e("CheckListJSON",json)
             viewModel.saveNote(
                 Note(
                     title = viewModel.noteTitle,

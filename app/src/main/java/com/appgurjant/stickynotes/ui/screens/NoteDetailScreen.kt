@@ -73,7 +73,7 @@ import com.app.domain.model.Note
 import com.app.domain.model.TextStyleConfig
 import com.appgurjant.stickynotes.AppUtil.AppEnum
 import com.appgurjant.stickynotes.AppUtil.currentTime
-import com.appgurjant.stickynotes.AppUtil.userTimeFormat
+import com.appgurjant.stickynotes.AppUtil.formatNoteTimeForUi
 import com.appgurjant.stickynotes.R
 import com.appgurjant.stickynotes.components.DeleteNoteAlertDialog
 import com.appgurjant.stickynotes.components.RichTextEditor
@@ -145,7 +145,11 @@ fun NoteDetailScreen(
                 timeStamp = String().currentTime(),
                 contentJson = viewModel.currentContentJson,
                 noteType = noteDetail.noteType,
-                textStyleConfig = viewModel.textStyleConfig
+                textStyleConfig = viewModel.textStyleConfig,
+                createdAtMillis = noteDetail.createdAtMillis,
+                updatedAtMillis = noteDetail.updatedAtMillis,
+                reminderAtMillis = noteDetail.reminderAtMillis,
+                isSync = noteDetail.isSync
             )
             viewModel.updateNote(updatedNote)
 
@@ -266,10 +270,10 @@ fun NoteDetailUi(navController: NavController, noteDetail: Note, viewModel: Note
                 ),
             )
 
-            noteDetail.timeStamp?.let {
-                Log.e("Time", it)
+            val timeLabel = formatNoteTimeForUi(noteDetail)
+            if (timeLabel.isNotEmpty()) {
                 Text(
-                    String().userTimeFormat(it),
+                    timeLabel,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = horizontalPadding),
@@ -346,7 +350,11 @@ private fun updateNote(
                 timeStamp = String().currentTime(),
                 contentJson = contentJson,
                 noteType = noteDetail.noteType,
-                textStyleConfig = viewModel.textStyleConfig
+                textStyleConfig = viewModel.textStyleConfig,
+                createdAtMillis = noteDetail.createdAtMillis,
+                updatedAtMillis = noteDetail.updatedAtMillis,
+                reminderAtMillis = noteDetail.reminderAtMillis,
+                isSync = noteDetail.isSync
             )
             viewModel.updateNote(updatedNote)
         }
@@ -360,7 +368,11 @@ private fun updateNote(
                     timeStamp = String().currentTime(),
                     contentJson = contentJson,
                     noteType = noteDetail.noteType,
-                    textStyleConfig = viewModel.textStyleConfig
+                    textStyleConfig = viewModel.textStyleConfig,
+                    createdAtMillis = noteDetail.createdAtMillis,
+                    updatedAtMillis = noteDetail.updatedAtMillis,
+                    reminderAtMillis = noteDetail.reminderAtMillis,
+                    isSync = noteDetail.isSync
                 )
                 viewModel.updateNote(updatedNote)
             } else {
@@ -377,9 +389,10 @@ private fun updateNote(
 @Composable
 fun PreviewNoteDetail() {
     val note = Note(
-        "Sample Note Title",
-        "This is a sample note description",
-        "Monday, 01 Jan 2023, 10:00 AM"
+        noteId = "1",
+        title = "Sample Note Title",
+        description = "This is a sample note description",
+        timeStamp = "Monday, 01 Jan 2023, 10:00:00"
     )
     NoteDetailUi(rememberNavController(), note, hiltViewModel())
 }

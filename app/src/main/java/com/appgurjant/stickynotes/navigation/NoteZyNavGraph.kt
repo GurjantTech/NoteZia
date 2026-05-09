@@ -8,6 +8,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.appgurjant.stickynotes.ui.screens.CreateNewNote
+import com.appgurjant.stickynotes.ui.screens.GoogleSignInScreen
 import com.appgurjant.stickynotes.ui.screens.allnotes.AllNotesScreen
 import com.appgurjant.stickynotes.ui.screens.dashboard.DashboardScreen
 import com.appgurjant.stickynotes.ui.screens.NoteDetailScreen
@@ -55,6 +56,9 @@ fun NoteZyNavGraph(navController:NavHostController){
      }
      composable(Screen.SettingScreen.route) {
          SettingScreen(navController)
+     }
+     composable(Screen.GoogleSignInScreen.route) {
+         GoogleSignInScreen(navController)
      }
 
  }

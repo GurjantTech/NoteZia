@@ -14,6 +14,7 @@ import com.app.domain.usecase.AddNoteUseCase
 import com.app.domain.usecase.AllNoteUseCase
 import com.app.domain.usecase.DeleteNoteUseCase
 import com.app.domain.usecase.GetNoteDetailFromLocalUseCase
+import com.app.domain.usecase.RequestSyncUseCase
 import com.app.domain.usecase.UpdateNoteDetailFromLocalUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,6 +34,7 @@ class NoteViewModel @Inject constructor(
     private val getNoteDetailUseCase: GetNoteDetailFromLocalUseCase,
     private val updateNoteDetailFromLocalUseCase: UpdateNoteDetailFromLocalUseCase,
     private val deleteNoteUseCase: DeleteNoteUseCase,
+    private val requestSyncUseCase: RequestSyncUseCase,
 ) : ViewModel() {
     var noteTitle by  mutableStateOf("")
     var noteDescription by   mutableStateOf("")
@@ -83,7 +85,12 @@ class NoteViewModel @Inject constructor(
         if (query.isBlank()) {
             notes
         } else {
-            notes.filter { it.title.toString().contains(query, ignoreCase = true) || it.description.toString().contains(query, ignoreCase = true) }
+            notes.filter { note ->
+                val inTitle = note.title.orEmpty().contains(query, ignoreCase = true)
+                val inDesc = note.description.orEmpty().contains(query, ignoreCase = true)
+                val inJson = note.contentJson.orEmpty().contains(query, ignoreCase = true)
+                inTitle || inDesc || inJson
+            }
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
@@ -98,6 +105,8 @@ class NoteViewModel @Inject constructor(
                 addNoteUseCase(note).collect { it ->
                     _noteSaveState.value = it
                 }
+                // Newly inserted rows are isSync = 0 — kick the sync worker.
+                requestSyncUseCase()
             } catch (e: Exception) {
                 _noteSaveState.value = e.message.toString()
             }
@@ -138,6 +147,8 @@ class NoteViewModel @Inject constructor(
                 updateNoteDetailFromLocalUseCase(note).collect { it ->
                     _notesUpdateInLocal.value = it
                 }
+                // Updates also reset isSync = 0 (see NoteMapper) — re-sync.
+                requestSyncUseCase()
             } catch (e: Exception) {
                 Log.e("NoteViewModel", "Response : "+e.message.toString())
             }
@@ -153,6 +164,11 @@ class NoteViewModel @Inject constructor(
                     deleteNoteUseCase(noteId.toInt()).collect { it ->
                         _notesDeleteFromLocal.value = it
                     }
+                    // Best-effort: ask for a sync pass so any *other* pending
+                    // notes still get uploaded. The deleted note itself is
+                    // gone locally; full delete-replication requires a future
+                    // tombstones table (out of scope for v1).
+                    requestSyncUseCase()
                 } catch (e: Exception) {
                     Log.e("NoteViewModel", "Response : "+e.message.toString())
                 }

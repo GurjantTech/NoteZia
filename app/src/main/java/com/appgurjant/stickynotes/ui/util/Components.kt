@@ -88,7 +88,7 @@ fun BannerAd(modifier: Modifier = Modifier) {
                 )
             )
             if(BuildConfig.DEBUG){
-                adView.adUnitId = "ca-app-pub-3940256099942544/6300978111"
+                adView.adUnitId = "ca-app-pub-3940256099942544/9214589741"
             }else{
                 adView.adUnitId = "ca-app-pub-2294761279203706/7556154131"
             }

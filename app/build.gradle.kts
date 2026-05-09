@@ -19,8 +19,10 @@ android {
         applicationId = "com.appgurjant.stickynotes"
         minSdk = 24
         targetSdk = 36
-        versionCode = 29
-        versionName = "4.0.8"
+        versionCode = 30
+        versionName = "4.0.9"
+//        versionCode = 500
+//        versionName = "500.0.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
             // For ndk-build, instead use the ndkBuild block.
@@ -68,20 +70,6 @@ android {
         compose = true
         buildConfig = true
     }
-    flavorDimensions += listOf("version")
-
-    productFlavors {
-        create("dev") {
-            dimension = "version"
-            applicationId = "com.appgurjant.stickynotes.dev"
-            versionNameSuffix = "-free"
-
-        }
-        create("prod") {
-            dimension = "version"
-        }
-    }
-
 
 }
 
@@ -127,6 +115,14 @@ dependencies {
     implementation (libs.firebase.analytics)
     implementation(libs.firebase.messaging)
     implementation(libs.firebase.perf)
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
+
+    // Cloud sync (WorkManager + Hilt-Work)
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work)
+    kapt(libs.androidx.hilt.compiler)
+    implementation(libs.kotlinx.coroutines.play.services)
 // GSON
     implementation(libs.gson)
     // camera
@@ -154,6 +150,12 @@ dependencies {
     implementation(libs.play.services.ads)
 
     implementation(libs.kotlinx.coroutines.android)
+
+    // google login
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
+    implementation(libs.play.services.auth)
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)

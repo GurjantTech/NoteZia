@@ -51,6 +51,26 @@
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-2294761279203706~4458748082"/>
 
+        <!--
+            AppApplication implements androidx.work.Configuration.Provider, which
+            enables on-demand WorkManager initialization via the injected
+            HiltWorkerFactory. The default auto-init via androidx.startup must
+            therefore be disabled — leaving it in causes a double-initialization
+            and a release-build lint fatal (RemoveWorkManagerInitializer).
+            We surgically remove only the WorkManagerInitializer node so any
+            other androidx.startup initializers continue to work normally.
+        -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
+
     </application>
 
 </manifest>

@@ -2,6 +2,7 @@ package com.appgurjant.stickynotes.ui.screens.allnotes
 
 import android.os.Build
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -21,7 +22,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.NoteAdd
+import androidx.compose.material.icons.rounded.CloudDone
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -30,6 +33,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -52,8 +56,9 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.app.domain.model.Note
+import com.app.domain.util.effectiveUpdatedMillis
 import com.appgurjant.stickynotes.AppUtil.AppEnum
-import com.appgurjant.stickynotes.AppUtil.userTimeFormat
+import com.appgurjant.stickynotes.AppUtil.formatNoteTimeForUi
 import com.appgurjant.stickynotes.R
 import com.appgurjant.stickynotes.navigation.Screen
 import com.appgurjant.stickynotes.ui.screens.NoteViewModel
@@ -74,7 +79,11 @@ private enum class AllNotesFilter(
 
 @Composable
 fun AllNotesScreen(navController: NavController) {
-    val viewModel: NoteViewModel = hiltViewModel(LocalContext.current as ComponentActivity)
+    // Share the activity-scoped NoteViewModel so all-notes and dashboard see
+    // the same instance (required for live updates after sync). LocalActivity
+    // is the lint-blessed accessor; we cast to ComponentActivity (Hilt's
+    // ViewModelStoreOwner contract) once at the entry point.
+    val viewModel: NoteViewModel = hiltViewModel(LocalActivity.current as ComponentActivity)
     val palette = MaterialTheme.notezyPalette
     val notes by viewModel.getAllNotesFromDB.collectAsState()
     val loaded by viewModel.notesInitiallyLoaded.collectAsState()
@@ -91,7 +100,7 @@ fun AllNotesScreen(navController: NavController) {
     var selectedFilter by rememberSaveable { mutableStateOf(AllNotesFilter.All) }
 
     val sortedNotes = remember(notes) {
-        notes.sortedByDescending { it.timeStamp.orEmpty() }
+        notes.sortedByDescending { it.effectiveUpdatedMillis() }
     }
     val filteredNotes = remember(sortedNotes, selectedFilter) {
         if (selectedFilter.noteType == null) {
@@ -262,15 +271,20 @@ private fun AllNoteListCard(note: Note, onClick: () -> Unit) {
         Column(
             modifier = Modifier.padding(12.dp)
         ) {
-            Text(
-                text = note.title?.takeIf { it.isNotBlank() } ?: stringResource(R.string.new_note),
-                fontFamily = FontFamily(Font(R.font.inter_bold)),
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = palette.textPrimary,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = note.title?.takeIf { it.isNotBlank() }
+                        ?: stringResource(R.string.new_note),
+                    fontFamily = FontFamily(Font(R.font.inter_bold)),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = palette.textPrimary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                NoteSyncBadge(isSync = note.isSync)
+            }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = preview,
@@ -283,12 +297,39 @@ private fun AllNoteListCard(note: Note, onClick: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = String().userTimeFormat(note.timeStamp.orEmpty()),
+                text = formatNoteTimeForUi(note),
                 fontFamily = FontFamily(Font(R.font.inter_regular)),
                 fontSize = 12.sp,
                 color = palette.textMuted
             )
         }
+    }
+}
+
+/**
+ * Subtle 14dp cloud icon next to the note title:
+ *  - filled `CloudDone` (success-tinted) when `isSync = 1`
+ *  - outlined `CloudOff` (muted) when `isSync = 0`
+ *
+ * Kept tiny on purpose so it never competes with the title.
+ */
+@Composable
+private fun NoteSyncBadge(isSync: Int) {
+    val palette = MaterialTheme.notezyPalette
+    if (isSync == 1) {
+        Icon(
+            imageVector = Icons.Rounded.CloudDone,
+            contentDescription = stringResource(R.string.note_sync_status_synced),
+            tint = palette.successDot,
+            modifier = Modifier.size(14.dp)
+        )
+    } else {
+        Icon(
+            imageVector = Icons.Outlined.CloudOff,
+            contentDescription = stringResource(R.string.note_sync_status_pending),
+            tint = palette.textMuted,
+            modifier = Modifier.size(14.dp)
+        )
     }
 }
 

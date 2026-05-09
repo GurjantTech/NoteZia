@@ -3,13 +3,17 @@ package com.appgurjant.stickynotes.ui.screens.qrScanner
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import android.util.Size
 import androidx.camera.core.CameraControl
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCapture.FLASH_MODE_OFF
 import androidx.camera.core.ImageCapture.FLASH_MODE_ON
 import androidx.camera.core.Preview
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
@@ -41,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
@@ -55,6 +60,7 @@ import com.appgurjant.stickynotes.components.takeCameraPermission
 import com.appgurjant.stickynotes.ui.theme.notezyPalette
 import com.appgurjant.stickynotes.ui.util.BannerAd
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 private object QrScanUiDefaults {
     val frameCornerRadius = 22.dp
@@ -71,6 +77,7 @@ fun QrScanScreen(navController: NavController) {
     var flashMode by remember { mutableStateOf(FLASH_MODE_OFF) }
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
     var cameraControl by remember { mutableStateOf<CameraControl?>(null) }
+    var previewViewRef by remember { mutableStateOf<PreviewView?>(null) }
     var showPermissionDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val palette = MaterialTheme.notezyPalette
@@ -96,12 +103,32 @@ fun QrScanScreen(navController: NavController) {
                 .fillMaxSize()
                 .padding(innerPadding)
                 .systemBarsPadding()
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.pressed } ?: continue
+                            val view = previewViewRef ?: continue
+                            val control = cameraControl ?: continue
+                            val point = view.meteringPointFactory
+                                .createPoint(change.position.x, change.position.y)
+                            val action = FocusMeteringAction.Builder(
+                                point,
+                                FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE
+                            )
+                                .setAutoCancelDuration(3, TimeUnit.SECONDS)
+                                .build()
+                            runCatching { control.startFocusAndMetering(action) }
+                        }
+                    }
+                }
         ) {
             ScannerView(
                 navController = navController,
-                onCameraReady = { capture, control ->
+                onCameraReady = { capture, control, view ->
                     imageCapture = capture
                     cameraControl = control
+                    previewViewRef = view
                     flashMode = capture.flashMode
                 }
             )
@@ -139,10 +166,20 @@ fun QrScanScreen(navController: NavController) {
     }
 }
 
+/**
+ * Camera preview + ML Kit barcode analysis pipeline.
+ *
+ * Tuned for reliable detection of dense / high-version QR codes:
+ * - [PreviewView.ScaleType.FIT_CENTER] avoids cropping the visible frame.
+ * - A high analysis resolution (1280x720+) gives ML Kit enough pixels to
+ *   resolve fine modules in dense codes.
+ * - An initial center auto-focus locks before the user moves; tap-to-focus
+ *   is wired up at the parent so it works through the overlay.
+ */
 @Composable
 private fun ScannerView(
     navController: NavController,
-    onCameraReady: (ImageCapture, CameraControl) -> Unit
+    onCameraReady: (ImageCapture, CameraControl, PreviewView) -> Unit
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -150,31 +187,43 @@ private fun ScannerView(
         modifier = Modifier.fillMaxSize(),
         factory = { ctx ->
             val previewView = PreviewView(ctx).apply {
-                scaleType = PreviewView.ScaleType.FILL_CENTER
+                scaleType = PreviewView.ScaleType.FIT_CENTER
+                implementationMode = PreviewView.ImplementationMode.COMPATIBLE
             }
+
             val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
             val executor = Executors.newSingleThreadExecutor()
 
             cameraProviderFuture.addListener({
                 val cameraProvider = cameraProviderFuture.get()
-                val preview = Preview.Builder().build().apply {
-                    setSurfaceProvider(previewView.surfaceProvider)
-                }
+
+                val resolutionSelector = ResolutionSelector.Builder()
+                    .setResolutionStrategy(
+                        ResolutionStrategy(
+                            Size(1280, 720),
+                            ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER
+                        )
+                    )
+                    .build()
+
+                val preview = Preview.Builder()
+                    .setResolutionSelector(resolutionSelector)
+                    .build()
+                    .apply { setSurfaceProvider(previewView.surfaceProvider) }
 
                 val imageAnalyzer = ImageAnalysis.Builder()
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .setResolutionSelector(resolutionSelector)
                     .build()
-                    .also {
-                        it.setAnalyzer(executor, QrCodeAnalyzer(navController))
-                    }
+                    .also { it.setAnalyzer(executor, QrCodeAnalyzer(navController)) }
+
+                val capture = ImageCapture.Builder()
+                    .setFlashMode(FLASH_MODE_OFF)
+                    .build()
 
                 val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
                 try {
                     cameraProvider.unbindAll()
-                    val capture = ImageCapture.Builder()
-                        .setFlashMode(FLASH_MODE_OFF)
-                        .build()
-
                     val camera = cameraProvider.bindToLifecycle(
                         lifecycleOwner,
                         cameraSelector,
@@ -182,15 +231,33 @@ private fun ScannerView(
                         imageAnalyzer,
                         capture
                     )
-                    onCameraReady(capture, camera.cameraControl)
+                    triggerInitialAutoFocus(previewView, camera.cameraControl)
+                    onCameraReady(capture, camera.cameraControl, previewView)
                 } catch (_: Exception) {
-                    // Keep UI stable when camera binding fails.
+                    // Keep UI stable when camera binding fails (e.g. host is finishing).
                 }
             }, ContextCompat.getMainExecutor(ctx))
 
             previewView
         }
     )
+}
+
+/** Kicks off a one-shot center focus so the camera locks before the user moves. */
+private fun triggerInitialAutoFocus(previewView: PreviewView, control: CameraControl) {
+    previewView.post {
+        val width = previewView.width.toFloat()
+        val height = previewView.height.toFloat()
+        if (width <= 0f || height <= 0f) return@post
+        val centerPoint = previewView.meteringPointFactory.createPoint(width / 2f, height / 2f)
+        val action = FocusMeteringAction.Builder(
+            centerPoint,
+            FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE
+        )
+            .setAutoCancelDuration(4, TimeUnit.SECONDS)
+            .build()
+        runCatching { control.startFocusAndMetering(action) }
+    }
 }
 
 @Composable

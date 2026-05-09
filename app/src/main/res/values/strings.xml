@@ -73,6 +73,44 @@
     <string name="biometric_unlock_subtitle">Use face or fingerprint to unlock NoteZia</string>
     <string name="simple_note">Simple Note</string>
     <string name="scan_qr">Scan QR</string>
+    <string name="onboarding_headline_line1">Organize your</string>
+    <string name="onboarding_headline_line2">Chaos.</string>
+    <string name="onboarding_subtitle">The note-taking app designed for the speed of your thoughts.</string>
+    <string name="sign_in_with_google">Sign in with Google</string>
+    <string name="onboarding_legal_prefix">By continuing, you agree to our </string>
+    <string name="onboarding_legal_and"> and </string>
+    <string name="terms_of_service">Terms of Service</string>
+    <string name="privacy_policy">Privacy Policy</string>
+    <string name="onboarding_cloud_sync">CLOUD SYNC</string>
+    <string name="cd_theme_toggle">Switch color theme</string>
+    <string name="cd_onboarding_logo">NoteZia</string>
+    <string name="unable_to_open_link">Unable to open link</string>
+    <string name="sync_and_access">Access your notes on all devices</string>
+    <string name="continue_with_google">Continue with Google</string>
+    <string name="access_your_notes_on_all_devices">Access your notes on all devices</string>
+    <string name="sync_with_google">Sync with Google</string>
+    <string name="sync">Sync</string>
+    <string name="your_notes">Your Notes</string>
+    <string name="back_up_and_access_your_notes_securely_across_all_your_devices">Back up and access your notes securely across all your devices</string>
+
+    <!-- Cloud sync -->
+    <string name="cloud_sync_subtitle">Back up and access your notes across devices</string>
+    <string name="sync_now">Sync now</string>
+    <string name="sync_in_progress">Syncing…</string>
+    <string name="sync_completed">All notes synced</string>
+    <string name="sync_partial">%1$d of %2$d notes synced</string>
+    <string name="sync_failed">Sync failed: %1$s</string>
+    <string name="sync_no_pending">No notes available to sync</string>
+    <string name="logout">Log out</string>
+    <string name="logout_confirm_title">Sign out of Google?</string>
+    <string name="logout_confirm_message">Your notes will remain on this device. Sign in again anytime to resume cloud sync.</string>
+    <string name="signed_out">Signed out</string>
+    <string name="signed_in_as">Signed in as %1$s</string>
+    <string name="sign_in_failed">Sign-in failed: %1$s</string>
+    <string name="cd_user_avatar">User avatar</string>
+    <string name="note_sync_status_synced">Synced</string>
+    <string name="note_sync_status_pending">Not synced</string>
+    <string name="sync_my_notes">Sync My Notes</string>
 
     <string-array name="notezia_quotes">
         <item>"💡 Idea aaya? NoteZia mein turant likh lo!"</item>

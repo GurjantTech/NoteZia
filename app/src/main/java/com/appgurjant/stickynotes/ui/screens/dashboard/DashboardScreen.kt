@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import android.content.Intent
 import android.os.Build
 import android.speech.RecognizerIntent
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -75,8 +76,9 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.app.domain.util.effectiveUpdatedMillis
 import com.appgurjant.stickynotes.AppUtil.AppEnum
-import com.appgurjant.stickynotes.AppUtil.userTimeFormat
+import com.appgurjant.stickynotes.AppUtil.formatNoteTimeForUi
 import com.appgurjant.stickynotes.R
 import com.appgurjant.stickynotes.components.getCurrentAppLanguage
 import com.appgurjant.stickynotes.firebase.FirebaseEvent
@@ -189,7 +191,7 @@ private fun quickActionStyles(): List<QuickActionStyle> {
 @Composable
 fun DashboardScreen(navController: NavController) {
     val tokens = dashboardTokens()
-    val noteViewModel: NoteViewModel = hiltViewModel(LocalContext.current as ComponentActivity)
+    val noteViewModel: NoteViewModel = hiltViewModel(LocalActivity.current as ComponentActivity)
     noteViewModel.getAllNotes()
 
     val context = LocalContext.current
@@ -199,11 +201,15 @@ fun DashboardScreen(navController: NavController) {
     val searchQuery by noteViewModel.searchQuery.collectAsState()
     val shouldShowWelcomeNotification by noteViewModel.shouldShowWelcomeNotification.collectAsState()
 
-    val noteList = notes.map {
+    val sortedNotes = remember(notes) {
+        notes.sortedByDescending { it.effectiveUpdatedMillis() }
+    }
+
+    val noteList = sortedNotes.map {
         NoteType(
             noteId = it.noteId ?: "",
             title = it.title ?: "",
-            createdAt = it.timeStamp ?: "",
+            displayTime = formatNoteTimeForUi(it),
             description = it.description ?: "",
             typeOfNote = it.noteType
         )
@@ -523,7 +529,7 @@ private fun QuickActionGrid(
     }
 }
 
-private val QuickActionCardShape = RoundedCornerShape(26.dp)
+private val QuickActionCardShape = RoundedCornerShape(15.dp)
 private val QuickActionIconContainerShape = RoundedCornerShape(14.dp)
 
 @Composable
@@ -671,7 +677,7 @@ private fun RecentNoteCard(note: NoteType, onClick: () -> Unit) {
 //                    )
 //                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = String().userTimeFormat(note.createdAt),
+                        text = note.displayTime,
                         fontFamily = FontFamily(Font(R.font.inter_regular)),
                         fontSize = 10.sp,
                         color = tokens.muted
@@ -694,7 +700,7 @@ private fun DashboardBannerBar() {
         modifier = Modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(start = 12.dp, top = 8.dp, end = 12.dp, bottom = 12.dp)
+            .padding(top = 8.dp, bottom = 5.dp)
     )
 }
 
@@ -720,7 +726,7 @@ private fun DashboardAddNoteFab(onClick: () -> Unit) {
 data class NoteType(
     val noteId: String,
     val title: String,
-    val createdAt: String,
+    val displayTime: String,
     val description: String,
     val typeOfNote: String? = "",
 )

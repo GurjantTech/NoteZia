@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import androidx.compose.foundation.Image
 import androidx.fragment.app.FragmentActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,10 +28,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AccountBox
 import androidx.compose.material.icons.rounded.ArrowBackIosNew
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Circle
-import androidx.compose.material.icons.rounded.CloudUpload
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Fingerprint
 import androidx.compose.material.icons.rounded.Language
@@ -72,8 +73,24 @@ import com.appgurjant.stickynotes.ui.theme.ThemeViewModel
 import com.appgurjant.stickynotes.ui.theme.notezyPalette
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.res.painterResource
+import com.appgurjant.stickynotes.navigation.Screen
 import com.appgurjant.stickynotes.ui.util.BannerAd
+import com.appgurjant.stickynotes.ui.util.ads.AdCounterKeys
+import com.appgurjant.stickynotes.ui.util.ads.rememberAdsConfig
+import com.appgurjant.stickynotes.ui.util.ads.rememberInterstitialAdManager
+import com.appgurjant.stickynotes.ui.util.ads.rememberRewardedAdManager
 import com.appgurjant.stickynotes.ui.screens.settings.SetPinBottomSheet
+import androidx.compose.material.icons.rounded.ExitToApp
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.LaunchedEffect
+import com.app.domain.model.SyncResult
+import com.app.domain.model.UserProfile
+import com.appgurjant.stickynotes.ui.screens.cloudsync.CloudSyncEvent
+import com.appgurjant.stickynotes.ui.screens.cloudsync.CloudSyncViewModel
 
 private const val NOTEZIA_PRIVACY_POLICY_URL =
     "https://sites.google.com/view/notezia-privacy-policy?usp=sharing"
@@ -83,11 +100,63 @@ fun SettingScreen(navController: NavController) {
     val context = LocalContext.current
     val noteViewModel: NoteViewModel = hiltViewModel()
     val themeViewModel: ThemeViewModel = hiltViewModel()
+    val cloudSyncViewModel: CloudSyncViewModel = hiltViewModel()
+    val interstitialAdManager = rememberInterstitialAdManager()
+    val rewardedAdManager = rememberRewardedAdManager()
+    val adsConfig = rememberAdsConfig()
     var isOpenBottomSheet by remember { mutableStateOf(false) }
     val isDarkTheme by themeViewModel.isDarkTheme.collectAsState()
     val isLightTheme = !isDarkTheme
     var passwordEnabled by remember { mutableStateOf(noteViewModel.getPin().isNotBlank()) }
     var biometricEnabled by remember { mutableStateOf(noteViewModel.isFingerprintEnabled()) }
+    val currentUser by cloudSyncViewModel.currentUser.collectAsState()
+    val isSyncing by cloudSyncViewModel.isSyncing.collectAsState()
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
+    // Resolve translated strings inside the @Composable scope and pass them
+    // into the suspending LaunchedEffect below — `stringResource` cannot be
+    // called from inside coroutines, and `context.getString` from there is
+    // flagged by lint (LocalContextGetResourceValueCall).
+    val signedInAsTemplate = stringResource(R.string.signed_in_as)
+    val signInFailedTemplate = stringResource(R.string.sign_in_failed)
+    val signedOutMessage = stringResource(R.string.signed_out)
+
+    LaunchedEffect(Unit) {
+        cloudSyncViewModel.events.collect { event ->
+            when (event) {
+                is CloudSyncEvent.SignInSuccess -> showToast(
+                    context,
+                    signedInAsTemplate.format(event.profile.name.ifBlank { event.profile.email })
+                )
+                is CloudSyncEvent.SignInFailed -> showToast(
+                    context,
+                    signInFailedTemplate.format(event.message)
+                )
+                CloudSyncEvent.SignedOut -> showToast(context, signedOutMessage)
+                is CloudSyncEvent.SignOutFailed -> showToast(context, event.message)
+                is CloudSyncEvent.SyncFinished -> showToast(context, syncMessage(context, event.result))
+
+                // "Sync with Drive" pre-flight outcomes — see CloudSyncViewModel.requestSync.
+                CloudSyncEvent.SyncRequiresSignIn ->
+                    navController.navigate(Screen.GoogleSignInScreen.route)
+                CloudSyncEvent.SyncReady -> {
+                    // Signed in → ad first, then full two-way merge. The
+                    // post-sync toast (see syncMessage) handles the
+                    // "nothing-to-sync" case when the merge resolves with
+                    // attempted = 0.
+                    val activity = context as? FragmentActivity
+                    if (activity != null) {
+                        rewardedAdManager.showAd(
+                            activity = activity,
+                            onProceed = { cloudSyncViewModel.syncNow() }
+                        )
+                    } else {
+                        cloudSyncViewModel.syncNow()
+                    }
+                }
+            }
+        }
+    }
 
     fun setBiometricEnabled(enabled: Boolean) {
         biometricEnabled = enabled
@@ -129,6 +198,7 @@ fun SettingScreen(navController: NavController) {
             onSuccess = {
                 setBiometricEnabled(true)
                 showToast(context, "Biometric authentication enabled")
+                interstitialAdManager.showAd(activity)
             },
             onError = { error ->
                 setBiometricEnabled(false)
@@ -143,6 +213,9 @@ fun SettingScreen(navController: NavController) {
                 isOpenBottomSheet = false
                 noteViewModel.setAppPin(it)
                 passwordEnabled = true
+                (context as? FragmentActivity)?.let {
+                    interstitialAdManager.showAd(it)
+                }
             }
         }
     }
@@ -151,7 +224,16 @@ fun SettingScreen(navController: NavController) {
         navController = navController,
         isLightTheme = isLightTheme,
         onThemeSelected = { selectedLight ->
-            themeViewModel.setDarkTheme(!selectedLight)
+            if (selectedLight != isLightTheme) {
+                themeViewModel.setDarkTheme(!selectedLight)
+                (context as? FragmentActivity)?.let { activity ->
+                    interstitialAdManager.showAdEveryN(
+                        activity = activity,
+                        counterKey = AdCounterKeys.THEME_CHANGED,
+                        threshold = adsConfig.interstitialShowThreshold
+                    )
+                }
+            }
         },
         passwordEnabled = passwordEnabled,
         onPasswordToggle = { enabled ->
@@ -168,11 +250,23 @@ fun SettingScreen(navController: NavController) {
         },
         biometricEnabled = biometricEnabled,
         onBiometricToggle = { enabled -> handleBiometricToggle(enabled) },
-        onSyncDrive = {
-            FirebaseEvent.logEvent(context, FirebaseEvent.changeLanguageEvent)
-            openLocaleSettings(context)
+        currentUser = currentUser,
+        isSyncing = isSyncing,
+        onAccountClick = {
+            if (currentUser == null) {
+                navController.navigate(Screen.GoogleSignInScreen.route)
+            } else {
+                showLogoutDialog = true
+            }
         },
-        onDriveCloudClick = { /* Google Drive backup */ },
+        onSyncWithDriveClick = {
+            // Pre-flight gate. The ViewModel decides whether the user needs
+            // to sign in or is ready to run the full two-way merge — we
+            // react in the events collector above. The merge itself handles
+            // both upload and download, so even a freshly signed-in device
+            // with zero local notes still pulls the remote backlog.
+            cloudSyncViewModel.requestSync()
+        },
         onShareAppClick = {
             FirebaseEvent.logEvent(context, FirebaseEvent.appShareEvent)
             shareApp(context)
@@ -186,9 +280,34 @@ fun SettingScreen(navController: NavController) {
             openLocaleSettings(context)
         },
         onPrivacyClick = { openUrlInBrowser(context, NOTEZIA_PRIVACY_POLICY_URL) },
-        onTermsClick = { openUrlInBrowser(context, NOTEZIA_PRIVACY_POLICY_URL) },
-        driveSyncClick = { showToast(context,"Coming Soon") }
+        onTermsClick = { openUrlInBrowser(context, NOTEZIA_PRIVACY_POLICY_URL) }
     )
+
+    if (showLogoutDialog && currentUser != null) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text(stringResource(R.string.logout_confirm_title)) },
+            text = { Text(stringResource(R.string.logout_confirm_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLogoutDialog = false
+                    cloudSyncViewModel.signOut()
+                }) { Text(stringResource(R.string.logout)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+}
+
+private fun syncMessage(context: Context, result: SyncResult): String = when {
+    result.errorMessage != null -> context.getString(R.string.sync_failed, result.errorMessage)
+    result.attempted == 0 -> context.getString(R.string.sync_no_pending)
+    result.failed == 0 -> context.getString(R.string.sync_completed)
+    else -> context.getString(R.string.sync_partial, result.succeeded, result.attempted)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -201,14 +320,15 @@ fun SettingScreenUi(
     onPasswordToggle: (Boolean) -> Unit,
     biometricEnabled: Boolean,
     onBiometricToggle: (Boolean) -> Unit,
-    onSyncDrive: () -> Unit,
-    onDriveCloudClick: () -> Unit,
+    currentUser: UserProfile?,
+    isSyncing: Boolean,
+    onAccountClick: () -> Unit,
+    onSyncWithDriveClick: () -> Unit,
     onShareAppClick: () -> Unit,
     onRateStoreClick: () -> Unit,
     onChangeLanguageClick: () -> Unit,
     onPrivacyClick: () -> Unit,
     onTermsClick: () -> Unit,
-    driveSyncClick: () -> Unit,
 ) {
     val palette = MaterialTheme.notezyPalette
     Scaffold(
@@ -233,9 +353,12 @@ fun SettingScreenUi(
                             .clickable { navController.popBackStack() }
                     )
                 },
-//                actions = {
-//                    DriveSyncPill(onClick = driveSyncClick)
-//                }
+                actions = {
+                    DriveSyncPill(
+                        isSyncing = isSyncing,
+                        onClick = onSyncWithDriveClick
+                    )
+                }
             )
         },
         bottomBar = {
@@ -304,10 +427,17 @@ fun SettingScreenUi(
                 }
             }
 
-//            item { SectionTitle(stringResource(R.string.account_data), palette.textMuted) }
-//            item {
-//                DriveCloudCard(onClick = onDriveCloudClick)
-//            }
+            item { SectionTitle(stringResource(R.string.account_data), palette.textMuted) }
+
+            item {
+                SettingsGroupCard {
+                    GoogleAccountCard(
+                        user = currentUser,
+                        onClick = onAccountClick
+                    )
+                }
+
+            }
 
             item { Spacer(modifier = Modifier.height(24.dp)) }
             item {
@@ -347,24 +477,38 @@ fun SettingScreenUi(
 }
 
 @Composable
-private fun DriveSyncPill(onClick: () -> Unit) {
+private fun DriveSyncPill(isSyncing: Boolean, onClick: () -> Unit) {
     val palette = MaterialTheme.notezyPalette
     Row(
         modifier = Modifier
             .background(palette.successBackground, RoundedCornerShape(28.dp))
             .border(1.dp, palette.successBorder, RoundedCornerShape(28.dp))
-            .clickable(onClick = onClick)
+            .clickable(enabled = !isSyncing, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Icon(Icons.Rounded.Circle, contentDescription = null, tint = palette.successDot, modifier = Modifier.size(10.dp))
-        Text(
-            text = stringResource(R.string.sync_with_drive),
-            color = palette.successText,
-            fontFamily = FontFamily(Font(R.font.inter_semibold)),
-            fontSize = 10.sp
-        )
+        if (isSyncing) {
+            CircularProgressIndicator(
+                color = palette.successDot,
+                strokeWidth = 1.5.dp,
+                modifier = Modifier.size(12.dp)
+            )
+            Text(
+                text = stringResource(R.string.sync_in_progress),
+                color = palette.successText,
+                fontFamily = FontFamily(Font(R.font.inter_semibold)),
+                fontSize = 10.sp
+            )
+        } else {
+            Icon(Icons.Rounded.Circle, contentDescription = null, tint = palette.successDot, modifier = Modifier.size(10.dp))
+            Text(
+                text = stringResource(R.string.sync_my_notes),
+                color = palette.successText,
+                fontFamily = FontFamily(Font(R.font.inter_semibold)),
+                fontSize = 10.sp
+            )
+        }
     }
 }
 
@@ -508,8 +652,17 @@ private fun SecurityRow(
     }
 }
 
+/**
+ * Single account row that adapts to sign-in state:
+ *  - Logged out: looks like a "Sync with Google" prompt; tap → sign-in screen.
+ *  - Logged in: shows the user's name + email + initial-avatar. Tap → logout confirmation.
+ * Manual sync runs from the app bar "Sync with Drive" action only.
+ */
 @Composable
-private fun DriveCloudCard(onClick: () -> Unit) {
+private fun GoogleAccountCard(
+    user: UserProfile?,
+    onClick: () -> Unit
+) {
     val palette = MaterialTheme.notezyPalette
     CardShell(
         modifier = Modifier
@@ -518,31 +671,67 @@ private fun DriveCloudCard(onClick: () -> Unit) {
         bg = palette.surface
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .background(palette.screenBackground, RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Rounded.CloudUpload, contentDescription = null, tint = palette.brandAccent)
-            }
+            AccountAvatar(user = user)
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = stringResource(R.string.google_drive_cloud),
+                    text = user?.name?.takeIf { it.isNotBlank() }
+                        ?: user?.email?.takeIf { it.isNotBlank() }
+                        ?: stringResource(R.string.sync_with_google),
                     color = palette.textPrimary,
                     fontFamily = FontFamily(Font(R.font.inter_bold)),
                     fontSize = 14.sp
                 )
                 Text(
-                    text = stringResource(R.string.last_backup_2_hours_ago),
+                    text = user?.email?.takeIf { it.isNotBlank() }
+                        ?: stringResource(R.string.cloud_sync_subtitle),
                     color = palette.textSecondary,
                     fontFamily = FontFamily(Font(R.font.inter_regular)),
                     fontSize = 12.sp
                 )
             }
-            Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = palette.textMuted)
+            if (user != null) {
+                Icon(Icons.Rounded.ExitToApp, contentDescription = null, tint = palette.textMuted)
+            } else {
+                Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = palette.textMuted)
+            }
         }
+    }
+}
+
+@Composable
+private fun AccountAvatar(user: UserProfile?) {
+    val palette = MaterialTheme.notezyPalette
+    Box(
+        modifier = Modifier
+            .size(42.dp)
+            .background(palette.screenBackground, RoundedCornerShape(12.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        if (user == null) {
+            Image(
+                painter = painterResource(R.drawable.ic_google_g_colored),
+                contentDescription = stringResource(R.string.sync_with_google)
+            )
+        } else {
+            Text(
+                text = avatarInitials(user),
+                color = palette.brandPrimary,
+                fontFamily = FontFamily(Font(R.font.inter_bold)),
+                fontSize = 16.sp
+            )
+        }
+    }
+}
+
+private fun avatarInitials(user: UserProfile): String {
+    val source = user.name.takeIf { it.isNotBlank() } ?: user.email
+    if (source.isBlank()) return "?"
+    val parts = source.trim().split(Regex("[ .@]+")).filter { it.isNotBlank() }
+    return when {
+        parts.isEmpty() -> "?"
+        parts.size == 1 -> parts[0].first().uppercase()
+        else -> "${parts[0].first()}${parts[1].first()}".uppercase()
     }
 }
 
@@ -573,7 +762,10 @@ private fun QuickActionsRow(
                         Box(
                             modifier = Modifier
                                 .size(44.dp)
-                                .background(palette.quickActionsIconContainer, RoundedCornerShape(16.dp)),
+                                .background(
+                                    palette.quickActionsIconContainer,
+                                    RoundedCornerShape(16.dp)
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -761,13 +953,14 @@ fun SettingScreenPreview() {
         onPasswordToggle = {},
         biometricEnabled = false,
         onBiometricToggle = {},
-        onSyncDrive = {},
-        onDriveCloudClick = {},
+        currentUser = null,
+        isSyncing = false,
+        onAccountClick = {},
+        onSyncWithDriveClick = {},
         onShareAppClick = {},
         onRateStoreClick = {},
         onChangeLanguageClick = {},
         onPrivacyClick = {},
-        onTermsClick = {},
-        driveSyncClick = {}
+        onTermsClick = {}
     )
 }
