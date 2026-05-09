@@ -10,6 +10,12 @@ interface NoteRepository {
     suspend fun getAllNotes(): Flow<List<Note>>
     suspend fun getNoteDetailFromLocalById(notedId: String): Flow<Note>
     suspend fun updateNoteDetailInLocal(noted: Note): Flow<StandardResponse>
+
+    /**
+     * Permanently removes the row from Room. Cloud replication is now the
+     * use case's responsibility (see `DeleteNoteUseCase`) — the repository
+     * deals with local persistence only.
+     */
     suspend fun deleteNoteById(noteId: Int): Flow<StandardResponse>
 
     /** Returns every local note with `isSync = 0`. */

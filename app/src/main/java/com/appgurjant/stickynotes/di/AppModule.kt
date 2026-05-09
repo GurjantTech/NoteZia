@@ -150,6 +150,33 @@ class AppModule {
         }
     }
 
+    /**
+     * Adds the `isDeleted` tombstone column for offline-safe deletion sync.
+     * Existing rows default to 0 (active); the sync worker will pick up new
+     * tombstones, replicate the deletion to Firestore, and hard-delete locally.
+     */
+    private val Migration_4_5 = object : Migration(4, 5) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            try {
+                val cursor = database.query("PRAGMA table_info(notes)")
+                val existingColumns = mutableListOf<String>()
+                while (cursor.moveToNext()) {
+                    existingColumns.add(cursor.getString(cursor.getColumnIndexOrThrow("name")))
+                }
+                cursor.close()
+
+                if (!existingColumns.contains("isDeleted")) {
+                    database.execSQL(
+                        "ALTER TABLE notes ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0"
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e("Migration", "Error during 4→5 migration", e)
+                throw e
+            }
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): NoteDatabase {
@@ -159,7 +186,7 @@ class AppModule {
             NoteDatabase::class.java,
             NoteDatabaseFiles.DATABASE_NAME
         )
-            .addMigrations(Migration_1_2, Migration_2_3, Migration_3_4)
+            .addMigrations(Migration_1_2, Migration_2_3, Migration_3_4, Migration_4_5)
             .fallbackToDestructiveMigration()
             .build()
     }
@@ -208,7 +235,11 @@ class AppModule {
         UpdateNoteDetailFromLocalUseCase(noteRepository)
 
     @Provides
-    fun deleteNoteUseCase(noteRepository: NoteRepository) = DeleteNoteUseCase(noteRepository)
+    fun deleteNoteUseCase(
+        noteRepository: NoteRepository,
+        firestoreRepository: FirestoreRepository,
+        authRepository: AuthRepository
+    ) = DeleteNoteUseCase(noteRepository, firestoreRepository, authRepository)
 
     @Provides
     fun provideGetThemeModeUseCase(themeRepository: ThemeRepository): GetThemeModeUseCase {
@@ -284,24 +315,16 @@ class AppModule {
     @Singleton
     fun provideSyncRepository(
         noteRepository: NoteRepository,
-        firestoreRepository: FirestoreRepository,
-        authRepository: AuthRepository,
-        syncScheduler: SyncScheduler
-    ): SyncRepository = SyncRepositoryImpl(
-        noteRepository,
-        firestoreRepository,
-        authRepository,
-        syncScheduler
-    )
+        firestoreRepository: FirestoreRepository
+    ): SyncRepository = SyncRepositoryImpl(noteRepository, firestoreRepository)
 
     // ---- cloud-sync use cases ----
 
     @Provides
     fun provideSignInWithGoogleUseCase(
         authRepository: AuthRepository,
-        firestoreRepository: FirestoreRepository,
-        syncScheduler: SyncScheduler
-    ) = SignInWithGoogleUseCase(authRepository, firestoreRepository, syncScheduler)
+        firestoreRepository: FirestoreRepository
+    ) = SignInWithGoogleUseCase(authRepository, firestoreRepository)
 
     @Provides
     fun provideSignOutUseCase(

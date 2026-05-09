@@ -14,7 +14,6 @@ import com.app.domain.usecase.AddNoteUseCase
 import com.app.domain.usecase.AllNoteUseCase
 import com.app.domain.usecase.DeleteNoteUseCase
 import com.app.domain.usecase.GetNoteDetailFromLocalUseCase
-import com.app.domain.usecase.RequestSyncUseCase
 import com.app.domain.usecase.UpdateNoteDetailFromLocalUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,7 +33,6 @@ class NoteViewModel @Inject constructor(
     private val getNoteDetailUseCase: GetNoteDetailFromLocalUseCase,
     private val updateNoteDetailFromLocalUseCase: UpdateNoteDetailFromLocalUseCase,
     private val deleteNoteUseCase: DeleteNoteUseCase,
-    private val requestSyncUseCase: RequestSyncUseCase,
 ) : ViewModel() {
     var noteTitle by  mutableStateOf("")
     var noteDescription by   mutableStateOf("")
@@ -98,6 +96,11 @@ class NoteViewModel @Inject constructor(
         _searchQuery.value = query
     }
 
+    /**
+     * Persists the note locally only. Cloud sync is now strictly manual: the
+     * row is stored with `isSync = 0` so the next "Sync My Notes" pass picks
+     * it up. We deliberately do NOT trigger any background sync here.
+     */
     fun saveNote(note: Note) {
         Log.d("NoteViewModel", "saveNote: $note")
         viewModelScope.launch() {
@@ -105,8 +108,6 @@ class NoteViewModel @Inject constructor(
                 addNoteUseCase(note).collect { it ->
                     _noteSaveState.value = it
                 }
-                // Newly inserted rows are isSync = 0 — kick the sync worker.
-                requestSyncUseCase()
             } catch (e: Exception) {
                 _noteSaveState.value = e.message.toString()
             }
@@ -140,6 +141,11 @@ class NoteViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Persists edits locally only. As with [saveNote], the mapper resets
+     * `isSync = 0` so the row is queued for the next manual sync pass — no
+     * automatic upload is performed.
+     */
     fun updateNote(note: Note) {
         Log.e("NoteViewModel", "updateNote : "+note)
         viewModelScope.launch() {
@@ -147,8 +153,6 @@ class NoteViewModel @Inject constructor(
                 updateNoteDetailFromLocalUseCase(note).collect { it ->
                     _notesUpdateInLocal.value = it
                 }
-                // Updates also reset isSync = 0 (see NoteMapper) — re-sync.
-                requestSyncUseCase()
             } catch (e: Exception) {
                 Log.e("NoteViewModel", "Response : "+e.message.toString())
             }
@@ -157,24 +161,26 @@ class NoteViewModel @Inject constructor(
 
 
 
+    /**
+     * Deletes a note. Unlike create/update, deletion is the **one** flow that
+     * still touches Firestore directly — see [DeleteNoteUseCase]:
+     *
+     *  - Signed-in: the Firestore document is removed first; the Room row is
+     *    only purged on success. A failure surfaces as a `status = "error"`
+     *    response so the UI can show a retry toast.
+     *  - Signed-out: a local-only delete is performed.
+     */
     fun deleteNoteById(noteId: String) {
-        if(noteId!=""){
-            viewModelScope.launch() {
-                try {
-                    deleteNoteUseCase(noteId.toInt()).collect { it ->
-                        _notesDeleteFromLocal.value = it
-                    }
-                    // Best-effort: ask for a sync pass so any *other* pending
-                    // notes still get uploaded. The deleted note itself is
-                    // gone locally; full delete-replication requires a future
-                    // tombstones table (out of scope for v1).
-                    requestSyncUseCase()
-                } catch (e: Exception) {
-                    Log.e("NoteViewModel", "Response : "+e.message.toString())
+        if (noteId.isEmpty()) return
+        viewModelScope.launch {
+            try {
+                deleteNoteUseCase(noteId.toInt()).collect { response ->
+                    _notesDeleteFromLocal.value = response
                 }
+            } catch (e: Exception) {
+                Log.e("NoteViewModel", "Delete failed: ${e.message}")
             }
         }
-
     }
 
     fun updateCurrentContentJson(contentJson: String) {

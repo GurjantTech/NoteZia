@@ -4,7 +4,8 @@ package com.app.domain.model
  * Domain representation of a single note.
  *
  * [isSync] mirrors the local Room column: `0` = pending upload, `1` = synced.
- * Default `0` keeps every newly-created note flagged for the next sync pass.
+ * Default `0` keeps every newly-created note flagged for the next manual
+ * "Sync My Notes" pass.
  */
 data class Note(
     var noteId: String? = "",

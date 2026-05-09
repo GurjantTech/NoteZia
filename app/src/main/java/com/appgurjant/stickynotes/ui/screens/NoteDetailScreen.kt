@@ -121,9 +121,15 @@ fun NoteDetailScreen(
     val context = LocalContext.current
 
     LaunchedEffect(noteDeleteResponse) {
-        noteDeleteResponse?.let {
+        val response = noteDeleteResponse ?: return@LaunchedEffect
+        // The use case emits an explicit "error" status when Firestore deletion
+        // fails for a signed-in user; in that case the local note is preserved
+        // and the user stays on the detail screen so they can retry.
+        if (response.status.equals("error", ignoreCase = true)) {
+            Toast.makeText(context, response.message, Toast.LENGTH_LONG).show()
+        } else {
             FirebaseEvent.logEvent(context, FirebaseEvent.noteDeletedSuccessEvent)
-            Toast.makeText(context, noteDeleteResponse.message, Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, response.message, Toast.LENGTH_SHORT).show()
             navController.popBackStack(Screen.NoteDetailScreen.route, true)
         }
     }

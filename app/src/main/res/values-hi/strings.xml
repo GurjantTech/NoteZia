@@ -113,6 +113,10 @@
     <string name="note_sync_status_pending">सिंक नहीं किया गया</string>
     <string name="sync_my_notes">मेरे नोट्स सिंक करें</string>
 
+    <!-- डैशबोर्ड हेडर सिंक आइकन -->
+    <string name="dashboard_sync_header_synced">सभी नोट्स बैकअप हो गए</string>
+    <string name="dashboard_sync_header_pending">%1$d नोट्स सिंक लंबित हैं</string>
+
     <string-array name="notezia_quotes">
         <item>"💡 आइडिया आया? नोटज़िया में तुरंत लिख लो!"</item>
         <item>"✍️ छोटी सोच भी बड़ा आइडिया बन सकती है – बस लिख लो."</item>

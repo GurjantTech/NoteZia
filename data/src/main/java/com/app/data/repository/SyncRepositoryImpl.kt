@@ -4,29 +4,33 @@ import android.util.Log
 import com.app.domain.model.Note
 import com.app.domain.model.SyncResult
 import com.app.domain.util.effectiveUpdatedMillis
-import com.app.domain.repository.AuthRepository
 import com.app.domain.repository.FirestoreRepository
 import com.app.domain.repository.NoteRepository
 import com.app.domain.repository.SyncRepository
-import com.app.domain.repository.SyncScheduler
 
 /**
  * Two-way synchroniser between the local Room database and Firestore.
+ *
+ * Triggered exclusively by the manual "Sync My Notes" action (and as an
+ * optional initial pass right after Google sign-in). Note creation and
+ * edits are kept strictly local — they only flip `isSync = 0` so the next
+ * pass picks them up. Deletion is handled directly by `DeleteNoteUseCase`
+ * and never flows through this repository.
  *
  * Algorithm (last-write-wins by `updatedAt`):
  *
  *  1. Fetch the full remote note list and a snapshot of the local note list.
  *  2. Index both sides by note id (== Firestore document id == local Room id).
  *  3. For every unique id, classify the row into one of:
- *       - **local-only**     → upload to Firestore.
- *       - **remote-only**    → insert/replace into Room (preserving id).
- *       - **both, local newer**  → upload local copy.
- *       - **both, remote newer** → overwrite local copy.
- *       - **both, equal**    → no-op (already converged).
- *  4. Push the upload set to Firestore one-by-one (per-note runCatching so a
- *     single failure doesn't abort the rest).
- *  5. Apply the remote-side deltas + flip the successfully-uploaded rows to
- *     `isSync = 1` inside a single Room transaction (see [NoteDao.applyMergeResult]).
+ *       - **local-only**          → upload to Firestore.
+ *       - **remote-only**         → insert/replace into Room (preserving id).
+ *       - **both, local newer**   → upload local copy.
+ *       - **both, remote newer**  → overwrite local copy.
+ *       - **both, equal**         → no-op (already converged).
+ *  4. Push the upload set to Firestore one-by-one (per-note runCatching so
+ *     a single failure doesn't abort the rest).
+ *  5. Apply remote-side deltas + flip just-uploaded rows to `isSync = 1`
+ *     in a single Room transaction.
  *  6. Stamp `lastSyncTime` on the user document and DataStore on success.
  *
  * Failures are absorbed and reported via [SyncResult]; the worker uses that
@@ -34,9 +38,7 @@ import com.app.domain.repository.SyncScheduler
  */
 class SyncRepositoryImpl(
     private val noteRepository: NoteRepository,
-    private val firestoreRepository: FirestoreRepository,
-    private val authRepository: AuthRepository,
-    private val syncScheduler: SyncScheduler
+    private val firestoreRepository: FirestoreRepository
 ) : SyncRepository {
 
     override suspend fun syncPendingNotes(userId: String): SyncResult {
@@ -55,8 +57,6 @@ class SyncRepositoryImpl(
         val plan = buildMergePlan(localNotes, remoteNotes)
 
         if (plan.toUpload.isEmpty() && plan.toDownload.isEmpty()) {
-            // Both sides already converged — nothing to do, but still bump
-            // lastSyncTime so the UI reflects a successful pass.
             stampLastSyncTime(userId)
             return SyncResult(0, 0, 0)
         }
@@ -65,6 +65,7 @@ class SyncRepositoryImpl(
         var failed = 0
         var lastError: String? = null
 
+        // Phase 1 — uploads.
         val uploadedLocalIds = mutableListOf<Int>()
         for (note in plan.toUpload) {
             val localId = note.noteId?.toIntOrNull()
@@ -83,8 +84,7 @@ class SyncRepositoryImpl(
             }
         }
 
-        // Apply the local side of the merge in a single Room transaction:
-        // remote upserts + flipping just-uploaded rows to isSync = 1.
+        // Phase 2 — local merge (upserts + sync flag flips) atomically.
         val mergeOutcome = runCatching {
             noteRepository.applyMergeResult(
                 remoteUpserts = plan.toDownload,
@@ -111,21 +111,13 @@ class SyncRepositoryImpl(
 
     override suspend fun hasPendingNotes(): Boolean = noteRepository.hasPendingSyncNotes()
 
-    override suspend fun onLocalNoteChanged() {
-        // The DAO writes already set isSync = 0; we only need to nudge the
-        // worker to upload soon (no-op if no user is signed in).
-        if (authRepository.getCurrentUser() != null) {
-            syncScheduler.requestImmediateSync()
-        }
-    }
-
     /**
      * Reconcile the two sides into deterministic upload/download buckets.
      *
      * Conflict keys use [com.app.domain.util.effectiveUpdatedMillis], which
      * prefers persisted millis columns and falls back to parsing legacy UI
-     * timestamps. The larger value wins; equal timestamps are treated as already
-     * converged and skipped.
+     * timestamps. The larger value wins; equal timestamps are treated as
+     * already converged and skipped.
      */
     private fun buildMergePlan(
         local: List<Note>,

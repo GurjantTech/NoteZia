@@ -112,6 +112,10 @@
     <string name="note_sync_status_pending">Not synced</string>
     <string name="sync_my_notes">Sync My Notes</string>
 
+    <!-- Dashboard sync header icon (content descriptions) -->
+    <string name="dashboard_sync_header_synced">All notes backed up</string>
+    <string name="dashboard_sync_header_pending">%1$d notes pending sync</string>
+
     <string-array name="notezia_quotes">
         <item>"💡 Idea aaya? NoteZia mein turant likh lo!"</item>
         <item>"✍️ Chhoti soch bhi bada idea ban sakti hai – bas likh lo."</item>

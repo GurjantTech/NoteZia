@@ -83,6 +83,8 @@ import com.appgurjant.stickynotes.R
 import com.appgurjant.stickynotes.components.getCurrentAppLanguage
 import com.appgurjant.stickynotes.firebase.FirebaseEvent
 import com.appgurjant.stickynotes.navigation.Screen
+import com.appgurjant.stickynotes.ui.components.NoteSyncBadge
+import com.appgurjant.stickynotes.ui.screens.cloudsync.CloudSyncViewModel
 import com.appgurjant.stickynotes.ui.screens.NoteViewModel
 import com.appgurjant.stickynotes.ui.theme.notezyPalette
 import com.appgurjant.stickynotes.ui.util.BannerAd
@@ -191,7 +193,9 @@ private fun quickActionStyles(): List<QuickActionStyle> {
 @Composable
 fun DashboardScreen(navController: NavController) {
     val tokens = dashboardTokens()
-    val noteViewModel: NoteViewModel = hiltViewModel(LocalActivity.current as ComponentActivity)
+    val activity = LocalActivity.current as ComponentActivity
+    val noteViewModel: NoteViewModel = hiltViewModel(activity)
+    val cloudSyncViewModel: CloudSyncViewModel = hiltViewModel(activity)
     noteViewModel.getAllNotes()
 
     val context = LocalContext.current
@@ -200,6 +204,14 @@ fun DashboardScreen(navController: NavController) {
     val notes by noteViewModel.filteredNotes.collectAsState()
     val searchQuery by noteViewModel.searchQuery.collectAsState()
     val shouldShowWelcomeNotification by noteViewModel.shouldShowWelcomeNotification.collectAsState()
+    val currentUser by cloudSyncViewModel.currentUser.collectAsState()
+    val isSignedIn = currentUser != null
+
+    val pendingCount = remember(notes) {
+        notes.count { it.isSync == 0 }
+    }
+
+    val onDashboardSync = rememberDashboardSyncTrigger(navController)
 
     val sortedNotes = remember(notes) {
         notes.sortedByDescending { it.effectiveUpdatedMillis() }
@@ -211,7 +223,8 @@ fun DashboardScreen(navController: NavController) {
             title = it.title ?: "",
             displayTime = formatNoteTimeForUi(it),
             description = it.description ?: "",
-            typeOfNote = it.noteType
+            typeOfNote = it.noteType,
+            isSync = it.isSync
         )
     }
 
@@ -268,7 +281,9 @@ fun DashboardScreen(navController: NavController) {
         ) {
             Spacer(modifier = Modifier.height(14.dp))
             DashboardHeader(
-                onNotificationClick = {},
+                onSyncClick = onDashboardSync,
+                pendingCount = pendingCount,
+                isSignedIn = isSignedIn,
                 onProfileClick = { navController.navigate(Screen.SettingScreen.route) }
             )
             Spacer(modifier = Modifier.height(12.dp))
@@ -318,6 +333,7 @@ fun DashboardScreen(navController: NavController) {
                 }
             )
             Spacer(modifier = Modifier.height(12.dp))
+
             RecentHeader(
                 onSeeAllClick = { navController.navigate(Screen.AllNotesScreen.route) }
             )
@@ -359,7 +375,9 @@ fun DashboardScreen(navController: NavController) {
 
 @Composable
 private fun DashboardHeader(
-    onNotificationClick: () -> Unit,
+    onSyncClick: () -> Unit,
+    pendingCount: Int,
+    isSignedIn: Boolean,
     onProfileClick: () -> Unit
 ) {
     val tokens = dashboardTokens()
@@ -375,7 +393,11 @@ private fun DashboardHeader(
             color = tokens.heading
         )
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-//            CircleIconButton(icon = Icons.Default.NotificationsNone, onClick = onNotificationClick)
+            DashboardSyncHeaderIcon(
+                pendingCount = pendingCount,
+                isSignedIn = isSignedIn,
+                onClick = onSyncClick
+            )
             Box(
                 modifier = Modifier
                     .size(36.dp)
@@ -655,34 +677,26 @@ private fun RecentNoteCard(note: NoteType, onClick: () -> Unit) {
             )
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = note.title.ifEmpty { "Untitled Note" },
-                    fontFamily = FontFamily(Font(R.font.inter_bold)),
-                    fontSize = 12.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = tokens.heading
-                )
-                Spacer(modifier = Modifier.height(5.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-//                    Text(
-//                        text = badge,
-//                        modifier = Modifier
-//                            .clip(RoundedCornerShape(8.dp))
-//                            .background(badgeBg)
-//                            .padding(horizontal = 8.dp, vertical = 2.dp),
-//                        fontFamily = FontFamily(Font(R.font.inter_semibold)),
-//                        fontSize = 10.sp,
-//                        color = stripeColor
-//                    )
-//                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = note.displayTime,
-                        fontFamily = FontFamily(Font(R.font.inter_regular)),
-                        fontSize = 10.sp,
-                        color = tokens.muted
+                        text = note.title.ifEmpty { "Untitled Note" },
+                        fontFamily = FontFamily(Font(R.font.inter_bold)),
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = tokens.heading,
+                        modifier = Modifier.weight(1f)
                     )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    NoteSyncBadge(isSync = note.isSync, size = 12.dp)
                 }
+                Spacer(modifier = Modifier.height(5.dp))
+                Text(
+                    text = note.displayTime,
+                    fontFamily = FontFamily(Font(R.font.inter_regular)),
+                    fontSize = 10.sp,
+                    color = tokens.muted
+                )
             }
 //            Text(
 //                text = "⋮",
@@ -729,6 +743,7 @@ data class NoteType(
     val displayTime: String,
     val description: String,
     val typeOfNote: String? = "",
+    val isSync: Int = 0,
 )
 
 @Preview(showBackground = true)

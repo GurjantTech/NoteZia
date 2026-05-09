@@ -45,12 +45,38 @@ class CloudSyncViewModel @Inject constructor(
 
     fun signIn() {
         viewModelScope.launch {
-            runCatching { signInWithGoogleUseCase() }
-                .onSuccess { _events.emit(CloudSyncEvent.SignInSuccess(it)) }
+            val signInOutcome = runCatching { signInWithGoogleUseCase() }
+            signInOutcome
+                .onSuccess { profile ->
+                    _events.emit(CloudSyncEvent.SignInSuccess(profile))
+                    // Auto-sync once on login: upload any pre-existing local
+                    // notes (isSync = 0) so the freshly signed-in user sees
+                    // their notes mirrored to Firestore without an extra tap.
+                    // All subsequent note mutations stay manual-sync only.
+                    runPostSignInSync()
+                }
                 .onFailure {
                     _events.emit(CloudSyncEvent.SignInFailed(it.message ?: "Sign-in failed"))
                 }
         }
+    }
+
+    /**
+     * Runs the same pipeline as [syncNow] but without any pre-flight UX
+     * gating (rewarded ad, sign-in prompt) — those are owned by
+     * [requestSync] for manual user-initiated syncs.
+     *
+     * Toggles [isSyncing] so any observing UI shows a loading state and
+     * emits [CloudSyncEvent.SyncFinished] so existing subscribers
+     * (Settings + Dashboard) reuse their toast messaging.
+     */
+    private suspend fun runPostSignInSync() {
+        if (_isSyncing.value) return
+        _isSyncing.value = true
+        val result = runCatching { syncPendingNotesUseCase() }
+            .getOrDefault(SyncResult(0, 0, 0, errorMessage = "Sync failed"))
+        _isSyncing.value = false
+        _events.emit(CloudSyncEvent.SyncFinished(result))
     }
 
     fun signOut() {
@@ -63,23 +89,7 @@ class CloudSyncViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Pre-flight check for the manual "Sync with Drive" tap.
-     *
-     * With full two-way synchronisation, "having work to do" is no longer a
-     * pure local-state question — a freshly signed-in device may have zero
-     * local notes but a non-empty remote backlog to download. Determining
-     * that requires the same Firestore round-trip as the sync itself, so
-     * the precheck is intentionally minimal:
-     *
-     * - Not signed in → emit [CloudSyncEvent.SyncRequiresSignIn] (UI redirects
-     *   to Google Sign-In; no ad).
-     * - Signed in → emit [CloudSyncEvent.SyncReady] (UI shows the rewarded
-     *   ad and only then invokes [syncNow]).
-     *
-     * The "nothing to sync" UX still surfaces — once [syncNow] completes with
-     * `attempted == 0`, [syncMessage] resolves to the same friendly toast.
-     */
+
     fun requestSync() {
         if (_isSyncing.value) return
         viewModelScope.launch {
@@ -91,11 +101,7 @@ class CloudSyncViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Performs the actual upload. Should only be called by the UI **after**
-     * [requestSync] emitted [CloudSyncEvent.SyncReady] and (optionally) the
-     * rewarded ad finished. Safe to call directly in tests.
-     */
+
     fun syncNow() {
         if (_isSyncing.value) return
         viewModelScope.launch {

@@ -22,11 +22,4 @@ interface SyncRepository {
 
     /** Convenience: returns true if at least one note has `isSync = 0`. */
     suspend fun hasPendingNotes(): Boolean
-
-    /**
-     * Hook fired right after the user mutates a note (create/update/delete).
-     * The implementation should mark it as pending and trigger a background
-     * sync if appropriate (e.g. enqueue [com.app.domain.usecase.RequestSyncUseCase]).
-     */
-    suspend fun onLocalNoteChanged()
 }

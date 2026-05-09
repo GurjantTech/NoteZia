@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.Image
 import androidx.fragment.app.FragmentActivity
 import androidx.compose.foundation.background
@@ -100,7 +102,8 @@ fun SettingScreen(navController: NavController) {
     val context = LocalContext.current
     val noteViewModel: NoteViewModel = hiltViewModel()
     val themeViewModel: ThemeViewModel = hiltViewModel()
-    val cloudSyncViewModel: CloudSyncViewModel = hiltViewModel()
+    val cloudSyncViewModel: CloudSyncViewModel =
+        hiltViewModel(LocalActivity.current as ComponentActivity)
     val interstitialAdManager = rememberInterstitialAdManager()
     val rewardedAdManager = rememberRewardedAdManager()
     val adsConfig = rememberAdsConfig()

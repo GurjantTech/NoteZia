@@ -74,7 +74,7 @@ class NoteRepositoryImpl (private val noteDao: NoteDao) : NoteRepository{
     }
 
     override suspend fun deleteNoteById(noteId: Int): Flow<StandardResponse> {
-        val response=noteDao.deleteNote(noteId)
+        val response = noteDao.deleteNote(noteId)
         return flow {
             if (response > 0) {
                 emit(StandardResponseEntity(

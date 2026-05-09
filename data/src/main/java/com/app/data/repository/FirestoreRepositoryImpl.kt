@@ -61,18 +61,12 @@ class FirestoreRepositoryImpl(
         }
     }
 
-    override suspend fun softDeleteNote(userId: String, noteId: String) {
+    override suspend fun deleteNote(userId: String, noteId: String) {
         firestore.collection(USERS)
             .document(userId)
             .collection(NOTES)
             .document(noteId)
-            .set(
-                mapOf(
-                    "isDeleted" to true,
-                    "updatedAt" to System.currentTimeMillis()
-                ),
-                SetOptions.merge()
-            )
+            .delete()
             .await()
     }
 

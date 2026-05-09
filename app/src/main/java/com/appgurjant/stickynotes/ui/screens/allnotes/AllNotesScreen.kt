@@ -22,9 +22,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.NoteAdd
-import androidx.compose.material.icons.rounded.CloudDone
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -60,6 +58,7 @@ import com.app.domain.util.effectiveUpdatedMillis
 import com.appgurjant.stickynotes.AppUtil.AppEnum
 import com.appgurjant.stickynotes.AppUtil.formatNoteTimeForUi
 import com.appgurjant.stickynotes.R
+import com.appgurjant.stickynotes.ui.components.NoteSyncBadge
 import com.appgurjant.stickynotes.navigation.Screen
 import com.appgurjant.stickynotes.ui.screens.NoteViewModel
 import com.appgurjant.stickynotes.ui.theme.notezyPalette
@@ -303,33 +302,6 @@ private fun AllNoteListCard(note: Note, onClick: () -> Unit) {
                 color = palette.textMuted
             )
         }
-    }
-}
-
-/**
- * Subtle 14dp cloud icon next to the note title:
- *  - filled `CloudDone` (success-tinted) when `isSync = 1`
- *  - outlined `CloudOff` (muted) when `isSync = 0`
- *
- * Kept tiny on purpose so it never competes with the title.
- */
-@Composable
-private fun NoteSyncBadge(isSync: Int) {
-    val palette = MaterialTheme.notezyPalette
-    if (isSync == 1) {
-        Icon(
-            imageVector = Icons.Rounded.CloudDone,
-            contentDescription = stringResource(R.string.note_sync_status_synced),
-            tint = palette.successDot,
-            modifier = Modifier.size(14.dp)
-        )
-    } else {
-        Icon(
-            imageVector = Icons.Outlined.CloudOff,
-            contentDescription = stringResource(R.string.note_sync_status_pending),
-            tint = palette.textMuted,
-            modifier = Modifier.size(14.dp)
-        )
     }
 }
 

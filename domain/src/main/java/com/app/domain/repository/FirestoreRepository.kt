@@ -26,10 +26,12 @@ interface FirestoreRepository {
     suspend fun fetchAllNotes(userId: String): List<Note>
 
     /**
-     * Soft-deletes a note in Firestore: sets `isDeleted = true` and refreshes
-     * `updatedAt`. Local rows are still hard-deleted.
+     * Permanently removes the document at `users/{userId}/notes/{noteId}`.
+     * Called by the sync worker once a local tombstone has been detected;
+     * the local row is hard-deleted only after this call succeeds, so a
+     * failed delete is automatically retried on the next sync pass.
      */
-    suspend fun softDeleteNote(userId: String, noteId: String)
+    suspend fun deleteNote(userId: String, noteId: String)
 
     /** Updates only the `lastSyncTime` field on the user document. */
     suspend fun updateLastSyncTime(userId: String, timestamp: Long)
