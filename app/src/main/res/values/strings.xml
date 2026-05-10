@@ -106,6 +106,7 @@
     <string name="logout_confirm_message">Your notes will remain on this device. Sign in again anytime to resume cloud sync.</string>
     <string name="signed_out">Signed out</string>
     <string name="signed_in_as">Signed in as %1$s</string>
+    <string name="sign_in_success_message">You\'re all set! Tap \'Sync My Notes\'</string>
     <string name="sign_in_failed">Sign-in failed: %1$s</string>
     <string name="cd_user_avatar">User avatar</string>
     <string name="note_sync_status_synced">Synced</string>

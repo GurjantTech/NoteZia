@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.appgurjant.stickynotes.R
+import com.appgurjant.stickynotes.components.showToast
 import com.appgurjant.stickynotes.navigation.Screen
 import com.appgurjant.stickynotes.ui.theme.NotezyAppTheme
 import com.appgurjant.stickynotes.ui.theme.ThemeViewModel
@@ -99,17 +100,20 @@ fun GoogleSignInScreen(navController: NavController) {
     val themeViewModel: ThemeViewModel = hiltViewModel(activity)
     val cloudSyncViewModel: CloudSyncViewModel = hiltViewModel(activity)
     val isDarkTheme by themeViewModel.isDarkTheme.collectAsState()
-
+    val sign_in_success_message = stringResource(R.string.sign_in_success_message)
     LaunchedEffect(Unit) {
         cloudSyncViewModel.events.collect { event ->
             when (event) {
                 is CloudSyncEvent.SignInSuccess -> {
-                    Log.e("ClaudSync","SignInSuccess")
+                    Log.e("ClaudSync", "SignInSuccess")
+                    showToast(context, sign_in_success_message)
                     navController.popBackStack()
                 }
+
                 is CloudSyncEvent.SignInFailed -> {
-                   Log.e("ClaudSync","SignInFailed")
+                    Log.e("ClaudSync", "SignInFailed")
                 }
+
                 else -> Unit
             }
         }
@@ -128,7 +132,7 @@ private fun GoogleSignInScaffold(
     isDarkTheme: Boolean,
     onThemeToggle: () -> Unit,
     onGoogleSignIn: () -> Unit,
-    onBackPress:()->Unit
+    onBackPress: () -> Unit
 ) {
     val scroll = rememberScrollState()
     Box(modifier = Modifier.fillMaxSize()) {
@@ -193,7 +197,7 @@ private fun GoogleSignInBackgroundImage() {
 }
 
 @Composable
-private fun GoogleSignInTopBar(onBackPress:()->Unit) {
+private fun GoogleSignInTopBar(onBackPress: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(
             imageVector = Icons.Rounded.ArrowBackIosNew,

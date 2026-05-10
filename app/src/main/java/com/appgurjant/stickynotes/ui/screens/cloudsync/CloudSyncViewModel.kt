@@ -43,40 +43,64 @@ class CloudSyncViewModel @Inject constructor(
     private val _events = MutableSharedFlow<CloudSyncEvent>()
     val events = _events.asSharedFlow()
 
+    /**
+     * Durable, one-shot sign-in result message that survives navigation and
+     * configuration changes. Settings observes this and shows a toast on
+     * non-null values, then calls [consumeSignInMessage] to clear it so the
+     * same message isn't re-shown on rotation.
+     *
+     * We can't reuse [_events] for the post-sign-in toast because the
+     * Settings composition is destroyed by Compose Navigation while the
+     * Google Sign-In screen is on top — by the time Settings re-enters
+     * composition after `popBackStack()`, a SharedFlow with replay = 0 has
+     * already dispatched the event to whatever collectors were active and
+     * there's nothing left for the new collector to receive.
+     */
+    private val _signInMessage = MutableStateFlow<SignInMessage?>(null)
+    val signInMessage: StateFlow<SignInMessage?> = _signInMessage.asStateFlow()
+
+    /** Clear the pending sign-in message after the UI has displayed it. */
+    fun consumeSignInMessage() {
+        _signInMessage.value = null
+    }
+
+    /**
+     * Sign-in is intentionally minimal: persist the session (handled inside
+     * [SignInWithGoogleUseCase] via the auth repository) and save the user
+     * profile to Firestore. Notes are NEVER auto-synced here — the user
+     * must explicitly tap **Sync My Notes** to upload local data, keeping
+     * the manual-sync contract documented in [requestSync] / [syncNow].
+     */
     fun signIn() {
         viewModelScope.launch {
-            val signInOutcome = runCatching { signInWithGoogleUseCase() }
-            signInOutcome
+            runCatching { signInWithGoogleUseCase() }
                 .onSuccess { profile ->
                     _events.emit(CloudSyncEvent.SignInSuccess(profile))
-                    // Auto-sync once on login: upload any pre-existing local
-                    // notes (isSync = 0) so the freshly signed-in user sees
-                    // their notes mirrored to Firestore without an extra tap.
-                    // All subsequent note mutations stay manual-sync only.
-                    runPostSignInSync()
+                    _signInMessage.value = SignInMessage.Success
                 }
-                .onFailure {
-                    _events.emit(CloudSyncEvent.SignInFailed(it.message ?: "Sign-in failed"))
+                .onFailure { throwable ->
+                    val message = throwable.message ?: "Sign-in failed"
+                    _events.emit(CloudSyncEvent.SignInFailed(message))
+                    // User-cancellations should be silent — tapping "back" or
+                    // dismissing the Google account picker isn't a failure
+                    // worth toasting about (matches spec: "If login is
+                    // cancelled, do not show any success message" / no error).
+                    if (!throwable.isUserCancellation()) {
+                        _signInMessage.value = SignInMessage.Failed(message)
+                    }
                 }
         }
     }
 
-    /**
-     * Runs the same pipeline as [syncNow] but without any pre-flight UX
-     * gating (rewarded ad, sign-in prompt) — those are owned by
-     * [requestSync] for manual user-initiated syncs.
-     *
-     * Toggles [isSyncing] so any observing UI shows a loading state and
-     * emits [CloudSyncEvent.SyncFinished] so existing subscribers
-     * (Settings + Dashboard) reuse their toast messaging.
-     */
-    private suspend fun runPostSignInSync() {
-        if (_isSyncing.value) return
-        _isSyncing.value = true
-        val result = runCatching { syncPendingNotesUseCase() }
-            .getOrDefault(SyncResult(0, 0, 0, errorMessage = "Sync failed"))
-        _isSyncing.value = false
-        _events.emit(CloudSyncEvent.SyncFinished(result))
+    private fun Throwable.isUserCancellation(): Boolean {
+        // We deliberately match by simple class name + message keywords to
+        // avoid pulling the Credentials / GMS types into the app-module
+        // ViewModel — keeps the dependency direction clean.
+        val typeName = javaClass.simpleName.lowercase()
+        val messageText = message.orEmpty().lowercase()
+        return "cancel" in typeName ||
+            "cancel" in messageText ||
+            "user canceled" in messageText
     }
 
     fun signOut() {
@@ -112,6 +136,15 @@ class CloudSyncViewModel @Inject constructor(
             _events.emit(CloudSyncEvent.SyncFinished(result))
         }
     }
+}
+
+/**
+ * Durable sign-in outcome surfaced via [CloudSyncViewModel.signInMessage].
+ * Mapped to a localized toast/snackbar in the UI layer.
+ */
+sealed interface SignInMessage {
+    data object Success : SignInMessage
+    data class Failed(val message: String) : SignInMessage
 }
 
 /** One-shot UI events emitted by [CloudSyncViewModel]. */

@@ -93,6 +93,7 @@ import com.app.domain.model.SyncResult
 import com.app.domain.model.UserProfile
 import com.appgurjant.stickynotes.ui.screens.cloudsync.CloudSyncEvent
 import com.appgurjant.stickynotes.ui.screens.cloudsync.CloudSyncViewModel
+import com.appgurjant.stickynotes.ui.screens.cloudsync.SignInMessage
 
 private const val NOTEZIA_PRIVACY_POLICY_URL =
     "https://sites.google.com/view/notezia-privacy-policy?usp=sharing"
@@ -114,27 +115,43 @@ fun SettingScreen(navController: NavController) {
     var biometricEnabled by remember { mutableStateOf(noteViewModel.isFingerprintEnabled()) }
     val currentUser by cloudSyncViewModel.currentUser.collectAsState()
     val isSyncing by cloudSyncViewModel.isSyncing.collectAsState()
+    val signInMessage by cloudSyncViewModel.signInMessage.collectAsState()
     var showLogoutDialog by remember { mutableStateOf(false) }
 
     // Resolve translated strings inside the @Composable scope and pass them
     // into the suspending LaunchedEffect below — `stringResource` cannot be
     // called from inside coroutines, and `context.getString` from there is
     // flagged by lint (LocalContextGetResourceValueCall).
-    val signedInAsTemplate = stringResource(R.string.signed_in_as)
+    val signInSuccessMessage = stringResource(R.string.sign_in_success_message)
     val signInFailedTemplate = stringResource(R.string.sign_in_failed)
     val signedOutMessage = stringResource(R.string.signed_out)
+
+    // Durable, one-shot sign-in result. Compose Navigation tears down this
+    // composition while GoogleSignInScreen is on top, so the SharedFlow
+    // event below would arrive at a dead collector — we route the toast
+    // through a StateFlow instead and consume() to prevent re-show on
+    // rotation.
+    LaunchedEffect(signInMessage) {
+        when (val msg = signInMessage) {
+            SignInMessage.Success -> {
+                showToast(context, signInSuccessMessage)
+                cloudSyncViewModel.consumeSignInMessage()
+            }
+            is SignInMessage.Failed -> {
+                showToast(context, signInFailedTemplate.format(msg.message))
+                cloudSyncViewModel.consumeSignInMessage()
+            }
+            null -> Unit
+        }
+    }
 
     LaunchedEffect(Unit) {
         cloudSyncViewModel.events.collect { event ->
             when (event) {
-                is CloudSyncEvent.SignInSuccess -> showToast(
-                    context,
-                    signedInAsTemplate.format(event.profile.name.ifBlank { event.profile.email })
-                )
-                is CloudSyncEvent.SignInFailed -> showToast(
-                    context,
-                    signInFailedTemplate.format(event.message)
-                )
+                // Sign-in success/failure toasts are routed via signInMessage
+                // (StateFlow) above so they survive cross-screen navigation.
+                is CloudSyncEvent.SignInSuccess,
+                is CloudSyncEvent.SignInFailed -> Unit
                 CloudSyncEvent.SignedOut -> showToast(context, signedOutMessage)
                 is CloudSyncEvent.SignOutFailed -> showToast(context, event.message)
                 is CloudSyncEvent.SyncFinished -> showToast(context, syncMessage(context, event.result))

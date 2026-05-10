@@ -107,6 +107,7 @@
     <string name="logout_confirm_message">आपके नोट्स इसी डिवाइस पर रहेंगे। क्लाउड सिंक फिर से शुरू करने के लिए कभी भी फिर से साइन इन करें।</string>
     <string name="signed_out">साइन आउट किया गया</string>
     <string name="signed_in_as">%1$s के तौर पर साइन इन किया गया</string>
+    <string name="sign_in_success_message">सब तैयार है! अपने नोट्स को Google क्लाउड पर बैकअप करने के लिए कभी भी \'मेरे नोट्स सिंक करें\' पर टैप करें।</string>
     <string name="sign_in_failed">साइन-इन फेल: %1$s</string>
     <string name="cd_user_avatar">यूज़र अवतार</string>
     <string name="note_sync_status_synced">सिंक किया गया</string>
