@@ -14,6 +14,7 @@ import com.app.data.local.dao.NoteDao
 import com.app.data.repository.AuthRepositoryImpl
 import com.app.data.repository.FirestoreRepositoryImpl
 import com.app.data.repository.NoteRepositoryImpl
+import com.app.data.repository.OnboardingRepositoryImpl
 import com.app.data.repository.SecureRepositoryImpl
 import com.app.data.repository.SyncRepositoryImpl
 import com.app.data.repository.ThemeRepositoryImpl
@@ -21,6 +22,7 @@ import com.app.data.security.SecureStorage
 import com.app.domain.repository.AuthRepository
 import com.app.domain.repository.FirestoreRepository
 import com.app.domain.repository.NoteRepository
+import com.app.domain.repository.OnboardingRepository
 import com.app.domain.repository.SecureRepository
 import com.app.domain.repository.SyncRepository
 import com.app.domain.repository.SyncScheduler
@@ -37,6 +39,8 @@ import com.app.domain.usecase.SetThemeModeUseCase
 import com.app.domain.usecase.SignInWithGoogleUseCase
 import com.app.domain.usecase.SignOutUseCase
 import com.app.domain.usecase.HasPendingNotesUseCase
+import com.app.domain.usecase.IsOnboardingCompletedUseCase
+import com.app.domain.usecase.SetOnboardingCompletedUseCase
 import com.app.domain.usecase.SyncPendingNotesUseCase
 import com.app.domain.usecase.UpdateNoteDetailFromLocalUseCase
 import com.app.domain.usecase.UploadNoteUseCase
@@ -223,6 +227,22 @@ class AppModule {
     fun provideThemeRepository(@ApplicationContext context: Context): ThemeRepository {
         return ThemeRepositoryImpl(context)
     }
+
+    @Provides
+    @Singleton
+    fun provideOnboardingRepository(@ApplicationContext context: Context): OnboardingRepository {
+        return OnboardingRepositoryImpl(context)
+    }
+
+    @Provides
+    fun provideIsOnboardingCompletedUseCase(
+        onboardingRepository: OnboardingRepository
+    ) = IsOnboardingCompletedUseCase(onboardingRepository)
+
+    @Provides
+    fun provideSetOnboardingCompletedUseCase(
+        onboardingRepository: OnboardingRepository
+    ) = SetOnboardingCompletedUseCase(onboardingRepository)
 
     @Provides
     fun addNoteUseCase(noteRepository: NoteRepository) = AddNoteUseCase(noteRepository)

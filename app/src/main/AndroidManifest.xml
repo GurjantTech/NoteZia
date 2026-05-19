@@ -32,7 +32,8 @@
             android:name="com.appgurjant.stickynotes.MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.NotezyApp">
+            android:theme="@style/Theme.NotezyApp"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

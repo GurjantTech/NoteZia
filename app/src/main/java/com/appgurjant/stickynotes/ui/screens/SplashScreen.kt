@@ -50,6 +50,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun SplashScreen(navController: NavController) {
     val palette = MaterialTheme.notezyPalette
+    val splashViewModel: SplashViewModel = hiltViewModel()
     val noteViewModel: NoteViewModel = hiltViewModel()
 
     val scale = remember { Animatable(0.8f) }
@@ -62,10 +63,14 @@ fun SplashScreen(navController: NavController) {
 
         delay(2500)
 
-        val hasPin = noteViewModel.getPin().isNotBlank()
-        val targetRoute = if (hasPin) Screen.AppLockScreen.route else Screen.DashboardScreen.route
+        val onboardingCompleted = splashViewModel.isOnboardingCompleted()
+        val targetRoute = when {
+            !onboardingCompleted -> Screen.OnboardingScreen.route
+            noteViewModel.getPin().isNotBlank() -> Screen.AppLockScreen.route
+            else -> Screen.DashboardScreen.route
+        }
         navController.navigate(targetRoute) {
-            popUpTo("splash") { inclusive = true }
+            popUpTo(Screen.Splash.route) { inclusive = true }
         }
     }
 

@@ -32,7 +32,7 @@ class AdsConfig @Inject constructor() {
         PROD_INTERSTITIAL_AD_UNIT_ID
     }
 
-    val interstitialShowThreshold: Int = 2
+    val interstitialShowThreshold: Int =1
 
     /** Master switch for the rewarded ad shown before manual cloud sync. */
     val rewardedAdsEnabled: Boolean = true

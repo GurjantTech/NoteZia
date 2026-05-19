@@ -20,12 +20,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.focus.onFocusEvent
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.Checkbox
@@ -190,34 +194,40 @@ fun NoteDetailUi(navController: NavController, noteDetail: Note, viewModel: Note
     })
 
     val horizontalPadding = 16.dp
-    Column(modifier = Modifier
-        .fillMaxSize()
-        .background(color = colorScheme.background)
-        .systemBarsPadding()) {
-
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
+    val titleBringIntoView = remember { BringIntoViewRequester() }
+    val titleFocusScope = rememberCoroutineScope()
+    val gson = remember { Gson() }
+    var checklist by remember(noteDetail.noteId, noteDetail.contentJson) {
+        mutableStateOf(
+            try {
+                val type = object : TypeToken<List<ChecklistItem>>() {}.type
+                val parsed = gson.fromJson<List<ChecklistItem>>(noteDetail.contentJson.orEmpty(), type)
+                if (parsed.isNullOrEmpty()) listOf(ChecklistItem("", false)) else parsed
+            } catch (e: Exception) {
+                listOf(ChecklistItem("", false))
+            }
         )
+    }
 
-        {
-            // Header with back button and delete
+    NoteEditorKeyboardAwareColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(color = colorScheme.background)
+            .systemBarsPadding(),
+        topBar = {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
-            )
-            {
+            ) {
                 Icon(
                     imageVector = ImageVector.vectorResource(R.drawable.ic_back),
                     contentDescription = "back",
                     tint = colorScheme.onSurface,
                     modifier = Modifier
                         .size(30.dp)
-
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = LocalIndication.current
@@ -247,90 +257,87 @@ fun NoteDetailUi(navController: NavController, noteDetail: Note, viewModel: Note
                         }
                 )
             }
-            // Title field (bind to mutable ViewModel state)
-            TextField(
-                value = viewModel.noteTitle,
-                onValueChange = { viewModel.onTitleChange(it) },
-                placeholder = {
-                    Text(
-                        "Untitled",
-                        color = colorScheme.onSurfaceVariant,
-                        fontSize = 20.sp,
-                        fontFamily = FontFamily(Font(R.font.inter_regular))
-                    )
-                },
-                textStyle = LocalTextStyle.current.merge(
-                    TextStyle(
-                        fontSize = 20.sp,
-                        fontFamily = FontFamily(Font(R.font.inter_regular)),
-                        color = colorScheme.onSurface
-                    )
-                ),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    disabledContainerColor = Color.Transparent,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    disabledIndicatorColor = Color.Transparent
-                ),
+        },
+        bottomBar = {
+            BannerAd(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(vertical = 12.dp)
             )
-
-            val timeLabel = formatNoteTimeForUi(noteDetail)
-            if (timeLabel.isNotEmpty()) {
+        }
+    ) {
+        TextField(
+            value = viewModel.noteTitle,
+            onValueChange = { viewModel.onTitleChange(it) },
+            placeholder = {
                 Text(
-                    timeLabel,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = horizontalPadding),
-                    fontSize = 14.sp,
-                    fontFamily = FontFamily(
-                        Font(
-                            R.font.inter_regular
-                        )
-                    ),
+                    "Untitled",
                     color = colorScheme.onSurfaceVariant,
+                    fontSize = 20.sp,
+                    fontFamily = FontFamily(Font(R.font.inter_regular))
                 )
-            }
-
-            val gson = remember { Gson() }
-            var checklist by remember(noteDetail.noteId, noteDetail.contentJson) {
-                mutableStateOf(
-                    try {
-                        val type = object : TypeToken<List<ChecklistItem>>() {}.type
-                        val parsed = gson.fromJson<List<ChecklistItem>>(noteDetail.contentJson.orEmpty(), type)
-                        if (parsed.isNullOrEmpty()) listOf(ChecklistItem("", false)) else parsed
-                    } catch (e: Exception) {
-                        listOf(ChecklistItem("", false))
+            },
+            textStyle = LocalTextStyle.current.merge(
+                TextStyle(
+                    fontSize = 20.sp,
+                    fontFamily = FontFamily(Font(R.font.inter_regular)),
+                    color = colorScheme.onSurface
+                )
+            ),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                disabledContainerColor = Color.Transparent,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                disabledIndicatorColor = Color.Transparent
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .bringIntoViewRequester(titleBringIntoView)
+                .onFocusEvent { focusState ->
+                    if (focusState.isFocused) {
+                        titleFocusScope.launch { titleBringIntoView.bringIntoView() }
                     }
-                )
-            }
+                }
+        )
 
-            if (noteDetail.noteType == AppEnum.CheckList.name) {
-                ChecklistEditor(
-                    checklist = checklist,
-                    focusRequesters = focusRequesters,
-                    onChecklistChanged = { updated ->
-                        checklist = updated
-                        viewModel.currentContentJson = gson.toJson(updated)
-                        viewModel.isContentModified = true
-                    }
-                )
-            } else {
-                NoteEditorContent(
-                    noteDescription = viewModel.noteDescription,
-                    onDescriptionChanged = {
-                        viewModel.onDescriptionChange(it)
-                        viewModel.isContentModified = true
-                    },
-                    isBold = viewModel.textStyleConfig.isBold
-                )
-            }
+        val timeLabel = formatNoteTimeForUi(noteDetail)
+        if (timeLabel.isNotEmpty()) {
+            Text(
+                timeLabel,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = horizontalPadding),
+                fontSize = 14.sp,
+                fontFamily = FontFamily(Font(R.font.inter_regular)),
+                color = colorScheme.onSurfaceVariant,
+            )
         }
 
-        BannerAd(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp))
+        if (noteDetail.noteType == AppEnum.CheckList.name) {
+            ChecklistEditor(
+                checklist = checklist,
+                focusRequesters = focusRequesters,
+                onChecklistChanged = { updated ->
+                    checklist = updated
+                    viewModel.currentContentJson = gson.toJson(updated)
+                    viewModel.isContentModified = true
+                }
+            )
+        } else {
+            NoteEditorContent(
+                noteDescription = viewModel.noteDescription,
+                onDescriptionChanged = {
+                    viewModel.onDescriptionChange(it)
+                    viewModel.isContentModified = true
+                },
+                isBold = viewModel.textStyleConfig.isBold
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
     }
-
 }
 
 private fun updateNote(

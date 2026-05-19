@@ -39,8 +39,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -66,8 +68,12 @@ import androidx.navigation.NavController
 import com.appgurjant.stickynotes.R
 import com.appgurjant.stickynotes.components.showToast
 import com.appgurjant.stickynotes.navigation.Screen
+import com.appgurjant.stickynotes.ui.screens.cloudsync.CloudSyncEvent
+import com.appgurjant.stickynotes.ui.screens.cloudsync.CloudSyncViewModel
+import com.appgurjant.stickynotes.ui.screens.onboarding.OnboardingViewModel
 import com.appgurjant.stickynotes.ui.theme.NotezyAppTheme
 import com.appgurjant.stickynotes.ui.theme.ThemeViewModel
+import kotlinx.coroutines.launch
 private const val NOTEZIA_LEGAL_URL =
     "https://sites.google.com/view/notezia-privacy-policy?usp=sharing"
 
@@ -93,7 +99,11 @@ fun OnboardingScreen(navController: NavController) {
     val context = LocalContext.current
     val activity = context as ComponentActivity
     val themeViewModel: ThemeViewModel = hiltViewModel(activity)
+    val cloudSyncViewModel: CloudSyncViewModel = hiltViewModel(activity)
+    val onboardingViewModel: OnboardingViewModel = hiltViewModel()
+    val noteViewModel: NoteViewModel = hiltViewModel()
     val isDarkTheme by themeViewModel.isDarkTheme.collectAsState()
+    val scope = rememberCoroutineScope()
 
     // Resolve resource strings inside the @Composable scope so the helper
     // function below can use them without re-querying through `Context`,
@@ -108,16 +118,39 @@ fun OnboardingScreen(navController: NavController) {
         }
     }
 
-    fun navigateAfterSignIn() {
-        navController.navigate(Screen.DashboardScreen.route) {
+    fun navigateToMainApp() {
+        val hasPin = noteViewModel.getPin().isNotBlank()
+        val targetRoute = if (hasPin) {
+            Screen.AppLockScreen.route
+        } else {
+            Screen.DashboardScreen.route
+        }
+        navController.navigate(targetRoute) {
             popUpTo(Screen.OnboardingScreen.route) { inclusive = true }
+        }
+    }
+
+    fun finishOnboardingAndContinue() {
+        scope.launch {
+            onboardingViewModel.completeOnboarding()
+            navigateToMainApp()
+        }
+    }
+
+    LaunchedEffect(cloudSyncViewModel) {
+        cloudSyncViewModel.events.collect { event ->
+            when (event) {
+                is CloudSyncEvent.SignInSuccess -> finishOnboardingAndContinue()
+                else -> Unit
+            }
         }
     }
 
     OnboardingScaffold(
         isDarkTheme = isDarkTheme,
         onThemeToggle = { themeViewModel.setDarkTheme(!isDarkTheme) },
-        onGoogleSignIn = { navigateAfterSignIn() },
+        onGoogleSignIn = { cloudSyncViewModel.signIn() },
+        onSkip = { finishOnboardingAndContinue() },
         onTermsClick = { openLegalUrl() },
         onPrivacyClick = { openLegalUrl() }
     )
@@ -128,6 +161,7 @@ private fun OnboardingScaffold(
     isDarkTheme: Boolean,
     onThemeToggle: () -> Unit,
     onGoogleSignIn: () -> Unit,
+    onSkip: () -> Unit,
     onTermsClick: () -> Unit,
     onPrivacyClick: () -> Unit
 ) {
@@ -167,6 +201,8 @@ private fun OnboardingScaffold(
             }
             Spacer(modifier = Modifier.height(32.dp))
             OnboardingGoogleSignInButton(onClick = onGoogleSignIn)
+            Spacer(modifier = Modifier.height(32.dp))
+            OnboardingSkipSignInButton(onClick = onSkip)
             Spacer(modifier = Modifier.height(20.dp))
             OnboardingLegalFooter(
                 onTermsClick = onTermsClick,
@@ -224,20 +260,20 @@ private fun OnboardingTopBar(
                 letterSpacing = (-0.2).sp
             )
         }
-        IconButton(
-            onClick = onThemeToggle,
-            modifier = Modifier
-                .size(44.dp)
-                .clip(CircleShape)
-                .background(OnboardingPalette.toggleTrack)
-        ) {
-            Icon(
-                imageVector = if (isDarkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
-                contentDescription = stringResource(R.string.cd_theme_toggle),
-                tint = OnboardingPalette.moonTint,
-                modifier = Modifier.size(22.dp)
-            )
-        }
+//        IconButton(
+//            onClick = onThemeToggle,
+//            modifier = Modifier
+//                .size(44.dp)
+//                .clip(CircleShape)
+//                .background(OnboardingPalette.toggleTrack)
+//        ) {
+//            Icon(
+//                imageVector = if (isDarkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
+//                contentDescription = stringResource(R.string.cd_theme_toggle),
+//                tint = OnboardingPalette.moonTint,
+//                modifier = Modifier.size(22.dp)
+//            )
+//        }
     }
 }
 
@@ -365,7 +401,7 @@ private fun DriveTriangleMark(edgeSize: Dp) {
 private fun OnboardingHeadline() {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
-            text = stringResource(R.string.onboarding_headline_line1),
+            text = stringResource(R.string.sync),
             color = OnboardingPalette.headlineInk,
             fontFamily = FontFamily(Font(R.font.inter_bold)),
             fontSize = 30.sp,
@@ -373,7 +409,7 @@ private fun OnboardingHeadline() {
             textAlign = TextAlign.Center
         )
         Text(
-            text = stringResource(R.string.onboarding_headline_line2),
+            text = stringResource(R.string.your_notes),
             color = OnboardingPalette.purplePrimary,
             fontFamily = FontFamily(Font(R.font.inter_bold)),
             fontSize = 34.sp,
@@ -386,7 +422,7 @@ private fun OnboardingHeadline() {
 @Composable
 private fun OnboardingSubtitle() {
     Text(
-        text = stringResource(R.string.onboarding_subtitle),
+        text = stringResource(R.string.back_up_and_access_your_notes_securely_across_all_your_devices),
         color = OnboardingPalette.subtitleSlate,
         fontFamily = FontFamily(Font(R.font.inter_regular)),
         fontSize = 16.sp,
@@ -399,6 +435,34 @@ private fun OnboardingSubtitle() {
 }
 
 @Composable
+private fun OnboardingSkipSignInButton(onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .shadow(2.dp, RoundedCornerShape(28.dp)),
+        shape = RoundedCornerShape(28.dp),
+        color = OnboardingPalette.purplePrimary,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+
+            Text(
+                text = "Skip for Now",
+                color = OnboardingPalette.toggleTrack,
+                fontFamily = FontFamily(Font(R.font.inter_semibold)),
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    }
+}@Composable
 private fun OnboardingGoogleSignInButton(onClick: () -> Unit) {
     Surface(
         onClick = onClick,
@@ -496,6 +560,7 @@ private fun OnboardingScreenPreview() {
             isDarkTheme = false,
             onThemeToggle = {},
             onGoogleSignIn = {},
+            onSkip = {},
             onTermsClick = {},
             onPrivacyClick = {}
         )

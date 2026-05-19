@@ -21,6 +21,11 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.ui.focus.onFocusEvent
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -121,36 +126,85 @@ fun CreateNewNote(navController: NavController, noteType: String, noteDescriptio
         }
     }
 
-    Column(
+    val titleBringIntoView = remember { BringIntoViewRequester() }
+    val titleFocusScope = rememberCoroutineScope()
+
+    NoteEditorKeyboardAwareColumn(
         modifier = Modifier
             .fillMaxSize()
             .background(palette.screenBackground)
             .systemBarsPadding()
-            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        topBar = {
+            EditorTopBar(
+                onBack = { navController.popBackStack() },
+                onSave = {
+                    val validationError = validateNoteInput(
+                        noteType = currentNoteType,
+                        noteDescription = viewModel.noteDescription,
+                        checklist = checklist,
+                        context = context
+                    )
+                    if (validationError != null) {
+                        Toast.makeText(context, validationError, Toast.LENGTH_SHORT).show()
+                        return@EditorTopBar
+                    }
+                    saveNewNote(
+                        noteType = currentNoteType,
+                        viewModel = viewModel,
+                        checklist = checklist
+                    )
+                },
+                canSave = canSave
+            )
+            Spacer(modifier = Modifier.height(14.dp))
+        },
+        bottomBar = {
+            Spacer(modifier = Modifier.height(10.dp))
+            EditorToolTray(
+                onVoice = {
+                    val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                        putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+                    }
+                    speechLauncher.launch(intent)
+                },
+                onImage = {},
+                onList = {
+                    if (currentNoteType == AppEnum.CheckList.name) {
+                        currentNoteType = AppEnum.TextNote.name
+                        if (viewModel.noteDescription.isBlank()) {
+                            val checklistText = checklist
+                                .map { it.text.trim() }
+                                .filter { it.isNotBlank() }
+                                .joinToString(separator = "\n")
+                            if (checklistText.isNotBlank()) {
+                                viewModel.onDescriptionChange(checklistText)
+                            }
+                        }
+                    } else {
+                        currentNoteType = AppEnum.CheckList.name
+                        if (checklist.size == 1 && checklist.first().text.isBlank() && viewModel.noteDescription.isNotBlank()) {
+                            checklist = listOf(
+                                ChecklistItem(viewModel.noteDescription.trim(), false),
+                                ChecklistItem("", false)
+                            )
+                            viewModel.onDescriptionChange("")
+                        }
+                    }
+                },
+                listLabel = if (currentNoteType == AppEnum.CheckList.name) "BLANK NOTE" else "CHECKLIST",
+                listIconRes = if (currentNoteType == AppEnum.CheckList.name) R.drawable.ic_blank_note else R.drawable.ic_checklist,
+                onSketch = {}
+            )
+            BannerAd(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(vertical = 12.dp)
+            )
+        }
     ) {
-        EditorTopBar(
-            onBack = { navController.popBackStack() },
-            onSave = {
-                val validationError = validateNoteInput(
-                    noteType = currentNoteType,
-                    noteDescription = viewModel.noteDescription,
-                    checklist = checklist,
-                    context = context
-                )
-                if (validationError != null) {
-                    Toast.makeText(context, validationError, Toast.LENGTH_SHORT).show()
-                    return@EditorTopBar
-                }
-                saveNewNote(
-                    noteType = currentNoteType,
-                    viewModel = viewModel,
-                    checklist = checklist
-                )
-            },
-            canSave = canSave
-        )
-        Spacer(modifier = Modifier.height(14.dp))
-
         TextField(
             value = viewModel.noteTitle,
             onValueChange = viewModel::onTitleChange,
@@ -174,7 +228,14 @@ fun CreateNewNote(navController: NavController, noteType: String, noteDescriptio
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent
             ),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .bringIntoViewRequester(titleBringIntoView)
+                .onFocusEvent { focusState ->
+                    if (focusState.isFocused) {
+                        titleFocusScope.launch { titleBringIntoView.bringIntoView() }
+                    }
+                }
         )
 
         Row(
@@ -204,63 +265,7 @@ fun CreateNewNote(navController: NavController, noteType: String, noteDescriptio
                 isBold = viewModel.textStyleConfig.isBold
             )
         }
-
-//        EditorFormatRow(
-//            isBold = viewModel.textStyleConfig.isBold,
-//            isItalic = viewModel.textStyleConfig.isItalic,
-//            onBoldClick = {
-//                viewModel.onTextStyleConfigChange(
-//                    viewModel.textStyleConfig.copy(isBold = !viewModel.textStyleConfig.isBold)
-//                )
-//            },
-//            onItalicClick = {
-//                viewModel.onTextStyleConfigChange(
-//                    viewModel.textStyleConfig.copy(isItalic = !viewModel.textStyleConfig.isItalic)
-//                )
-//            }
-//        )
-//
-        Spacer(modifier = Modifier.height(10.dp))
-        EditorToolTray(
-            onVoice = {
-                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                    putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
-                }
-                speechLauncher.launch(intent)
-            },
-            onImage = {},
-            onList = {
-                if (currentNoteType == AppEnum.CheckList.name) {
-                    currentNoteType = AppEnum.TextNote.name
-                    if (viewModel.noteDescription.isBlank()) {
-                        val checklistText = checklist
-                            .map { it.text.trim() }
-                            .filter { it.isNotBlank() }
-                            .joinToString(separator = "\n")
-                        if (checklistText.isNotBlank()) {
-                            viewModel.onDescriptionChange(checklistText)
-                        }
-                    }
-                } else {
-                    currentNoteType = AppEnum.CheckList.name
-                    if (checklist.size == 1 && checklist.first().text.isBlank() && viewModel.noteDescription.isNotBlank()) {
-                        checklist = listOf(ChecklistItem(viewModel.noteDescription.trim(), false), ChecklistItem("", false))
-                        viewModel.onDescriptionChange("")
-                    }
-                }
-            },
-            listLabel = if (currentNoteType == AppEnum.CheckList.name) "BLANK NOTE" else "CHECKLIST",
-            listIconRes = if (currentNoteType == AppEnum.CheckList.name) R.drawable.ic_blank_note else R.drawable.ic_checklist,
-            onSketch = {
-
-            }
-        )
-        BannerAd(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 12.dp)
-        )
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
