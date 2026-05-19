@@ -19,11 +19,32 @@ android {
         applicationId = "com.appgurjant.stickynotes"
         minSdk = 24
         targetSdk = 36
-        versionCode = 17
-        versionName = "4.0.2"
+        versionCode = 33
+        versionName = "4.0.12"
+//        versionCode = 500
+//        versionName = "500.0.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        externalNativeBuild {
+            // For ndk-build, instead use the ndkBuild block.
+            cmake {
+                // Passes optional arguments to CMake.
+                arguments += listOf("-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON")
+            }
+        }
     }
-
+    signingConfigs {
+        create("release") {
+            storeFile = file("/home/gurjantsingh/Desktop/MobileApps/NotezyApp/NotezyApp/app/stickyanimationnote.jks")
+            storePassword = "123456gG"
+            keyAlias = "stickyanimationnote"
+            keyPassword = "123456gG"
+        }
+    }
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
     buildTypes {
         debug {
             isMinifyEnabled = false
@@ -37,29 +58,17 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "11"
+
+    kotlin {
+        jvmToolchain(17)
     }
     kapt { generateStubs = true }
     buildFeatures {
         compose = true
         buildConfig = true
-    }
-
-    flavorDimensions("version")
-    productFlavors {
-        create("dev") {
-            dimension = "version"
-            applicationId = "com.appgurjant.stickynotes.dev"
-            versionNameSuffix = "-free"
-
-        }
-        create("prod") {
-            dimension = "version"
-        }
     }
 
 }
@@ -75,15 +84,17 @@ dependencies {
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.material3)
-    implementation (libs.androidx.navigation.compose)
-
-    // kotlin coroutines for flow
-    implementation(libs.kotlinx.coroutines.core)
+    // Explicitly add Material 3 with version
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.material.icons.extended) // Material Icons Extended
+    implementation(libs.androidx.navigation.compose)
 
 
     // Room Database
     implementation(libs.androidx.rooms.runtime)
+    implementation(libs.ui.graphics)
+    implementation(libs.androidx.foundation)
+    implementation(libs.androidx.compose.runtime)
 
     kapt(libs.androidx.rooms.compiler)
     implementation(libs.androidx.rooms.ktx) // Kotlin Extensions and Coroutines support
@@ -103,6 +114,15 @@ dependencies {
     implementation(libs.firebase.crashlytics)
     implementation (libs.firebase.analytics)
     implementation(libs.firebase.messaging)
+    implementation(libs.firebase.perf)
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
+
+    // Cloud sync (WorkManager + Hilt-Work)
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work)
+    kapt(libs.androidx.hilt.compiler)
+    implementation(libs.kotlinx.coroutines.play.services)
 // GSON
     implementation(libs.gson)
     // camera
@@ -117,24 +137,33 @@ dependencies {
 
     // security
     // Security Crypto for encrypted preferences and file storage
-    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    implementation(libs.androidx.security.crypto)
 
     // For encrypted SharedPreferences
-    implementation("androidx.security:security-crypto-ktx:1.1.0-alpha06")
+    implementation(libs.androidx.security.crypto.ktx)
 
-    // For encrypting large files
-    implementation("net.zetetic:android-database-sqlcipher:4.5.4" )
-    implementation("androidx.sqlite:sqlite-ktx:2.3.1")
+    implementation(libs.androidx.sqlite.ktx)
 
     implementation(libs.androidx.biometric)
+    implementation(libs.accompanist.systemuicontroller)
 
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.ui.test.junit4)
+    implementation(libs.play.services.ads)
+
+    implementation(libs.kotlinx.coroutines.android)
+
+    // google login
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
+    implementation(libs.play.services.auth)
+
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 
 
+
+
+
+
 }
+

@@ -1,59 +1,91 @@
 package com.appgurjant.stickynotes.ui.screens.qrScanner
 
 import android.annotation.SuppressLint
-import android.net.Uri
 import android.util.Log
-import android.util.Patterns
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.navigation.NavController
 import com.appgurjant.stickynotes.AppUtil.AppEnum
 import com.appgurjant.stickynotes.navigation.Screen
+import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
-import java.net.URLEncoder
+import java.util.concurrent.atomic.AtomicBoolean
 
-class QrCodeAnalyzer(val navController: NavController) : ImageAnalysis.Analyzer {
-var temp=0
+/**
+ * Analyzes camera frames for QR codes using ML Kit.
+ *
+ * Key design decisions:
+ * - Restricts detection to QR_CODE for faster, more reliable scans on dense codes.
+ * - Reuses a single [BarcodeScanner] instance instead of recreating it per frame.
+ * - Uses [AtomicBoolean] guards to ensure exactly-once navigation and prevent
+ *   processing of stale frames after a successful detection.
+ * - Always closes the [ImageProxy] via `addOnCompleteListener`, preventing the
+ *   camera pipeline from stalling when ML Kit fails or returns empty results.
+ */
+class QrCodeAnalyzer(
+    private val navController: NavController
+) : ImageAnalysis.Analyzer {
+
+    private val scanner: BarcodeScanner by lazy {
+        val options = BarcodeScannerOptions.Builder()
+            .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
+            .build()
+        BarcodeScanning.getClient(options)
+    }
+
+    private val isProcessing = AtomicBoolean(false)
+    private val hasNavigated = AtomicBoolean(false)
+
     @SuppressLint("UnsafeOptInUsageError")
     override fun analyze(imageProxy: ImageProxy) {
-        val img = imageProxy.image
-        if (img != null) {
-            val inputImage = InputImage.fromMediaImage(img, imageProxy.imageInfo.rotationDegrees)
-
-            // Process image searching for barcodes
-            val options = BarcodeScannerOptions.Builder()
-                .setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS)
-                .build()
-
-            val scanner = BarcodeScanning.getClient(options)
-            scanner.process(inputImage)
-                .addOnSuccessListener {
-                    imageProxy.close()
-                    if (!it.isNullOrEmpty()) {
-                        for (i in it) {
-                            Log.e("QrScannerData", i.rawValue.toString())
-                            i.rawValue?.let {
-                                if(it.isNotEmpty()){
-                                    if(temp==0){
-                                        // When screen create this background stack will be removed In Case of qr note
-                                        navController.popBackStack(Screen.QrScanScreen.route, true)
-                                        navController.navigate(Screen.CreateNewNoteScreen.passNoteType(
-                                            AppEnum.QrNote.name,"$it"))
-                                        temp++
-                                    }
-
-                                }
-                            }
-                        }
-                    }
-
-                }
-                .addOnFailureListener {
-                    Log.e("QrScannerData: ", "addOnFailureListener : " + it.message)
-                }
+        if (hasNavigated.get()) {
+            imageProxy.close()
+            return
         }
+        if (!isProcessing.compareAndSet(false, true)) {
+            imageProxy.close()
+            return
+        }
+
+        val mediaImage = imageProxy.image
+        if (mediaImage == null) {
+            imageProxy.close()
+            isProcessing.set(false)
+            return
+        }
+
+        val inputImage = InputImage.fromMediaImage(
+            mediaImage,
+            imageProxy.imageInfo.rotationDegrees
+        )
+
+        scanner.process(inputImage)
+            .addOnSuccessListener { barcodes ->
+                val rawValue = barcodes.firstOrNull { !it.rawValue.isNullOrEmpty() }?.rawValue
+                if (!rawValue.isNullOrEmpty() && hasNavigated.compareAndSet(false, true)) {
+                    Log.d(TAG, "QR detected: $rawValue")
+                    navController.popBackStack(Screen.QrScanScreen.route, true)
+                    navController.navigate(
+                        Screen.CreateNewNoteScreen.passNoteType(
+                            AppEnum.QrNote.name,
+                            rawValue
+                        )
+                    )
+                }
+            }
+            .addOnFailureListener { error ->
+                Log.e(TAG, "Barcode scan failed: ${error.message}")
+            }
+            .addOnCompleteListener {
+                imageProxy.close()
+                isProcessing.set(false)
+            }
+    }
+
+    companion object {
+        private const val TAG = "QrCodeAnalyzer"
     }
 }

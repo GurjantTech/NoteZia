@@ -1,3 +1,5 @@
+package com.app.data.security
+
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
@@ -52,6 +54,4 @@ object KeyStoreManager {
         val decoded = cipher.doFinal(encryptedData)
         return String(decoded, Charsets.UTF_8)
     }
-
-
-    }
+}

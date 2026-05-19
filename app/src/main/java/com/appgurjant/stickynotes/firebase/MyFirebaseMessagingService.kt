@@ -60,7 +60,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         val notification = NotificationCompat.Builder(this, channelId)
             .setContentTitle(title ?: "NoteZia")
             .setContentText(message ?: "")
-            .setSmallIcon(R.drawable.app_logo_without_bg) // change to your icon
+            .setSmallIcon(R.drawable.ic_launcher_playstore) // change to your icon
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_HIGH)

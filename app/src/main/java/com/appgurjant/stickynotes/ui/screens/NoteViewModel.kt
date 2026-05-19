@@ -1,23 +1,20 @@
 package com.appgurjant.stickynotes.ui.screens
 
 import android.util.Log
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.app.data.security.SecureStorage
 import com.app.domain.model.Note
 import com.app.domain.model.StandardResponse
-import com.app.domain.repository.SecureRepository
+import com.app.domain.model.TextStyleConfig
 import com.app.domain.usecase.AddNoteUseCase
 import com.app.domain.usecase.AllNoteUseCase
 import com.app.domain.usecase.DeleteNoteUseCase
 import com.app.domain.usecase.GetNoteDetailFromLocalUseCase
 import com.app.domain.usecase.UpdateNoteDetailFromLocalUseCase
-import com.app.domain.utils.UIState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -39,12 +36,16 @@ class NoteViewModel @Inject constructor(
 ) : ViewModel() {
     var noteTitle by  mutableStateOf("")
     var noteDescription by   mutableStateOf("")
+    var textStyleConfig by   mutableStateOf(TextStyleConfig())
 
     private val _noteSaveState = MutableStateFlow<String?>(null)
     val noteSaveState: StateFlow<String?> = _noteSaveState
 
     private val _getAllNotesFromDB = MutableStateFlow<List<Note>>(emptyList())
     val getAllNotesFromDB: StateFlow<List<Note>> = _getAllNotesFromDB
+
+    private val _notesInitiallyLoaded = MutableStateFlow(false)
+    val notesInitiallyLoaded: StateFlow<Boolean> = _notesInitiallyLoaded.asStateFlow()
     private val _getNotesDetailByIdFromLocal= MutableStateFlow<Note?>(null)
     val getNotesDetailByIdFromLocal: StateFlow<Note?> = _getNotesDetailByIdFromLocal
     private val _notesUpdateInLocal= MutableStateFlow<StandardResponse?>(null)
@@ -61,6 +62,9 @@ class NoteViewModel @Inject constructor(
 
     fun onTitleChange(newTitle: String) { noteTitle = newTitle }
     fun onDescriptionChange(newDesc: String) { noteDescription = newDesc }
+    fun onTextStyleConfigChange(newTextStyleConfig: TextStyleConfig) {
+        textStyleConfig = newTextStyleConfig
+    }
 
 
     private val _searchQuery = MutableStateFlow("")
@@ -79,7 +83,12 @@ class NoteViewModel @Inject constructor(
         if (query.isBlank()) {
             notes
         } else {
-            notes.filter { it.title.toString().contains(query, ignoreCase = true) || it.description.toString().contains(query, ignoreCase = true) }
+            notes.filter { note ->
+                val inTitle = note.title.orEmpty().contains(query, ignoreCase = true)
+                val inDesc = note.description.orEmpty().contains(query, ignoreCase = true)
+                val inJson = note.contentJson.orEmpty().contains(query, ignoreCase = true)
+                inTitle || inDesc || inJson
+            }
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
@@ -87,6 +96,11 @@ class NoteViewModel @Inject constructor(
         _searchQuery.value = query
     }
 
+    /**
+     * Persists the note locally only. Cloud sync is now strictly manual: the
+     * row is stored with `isSync = 0` so the next "Sync My Notes" pass picks
+     * it up. We deliberately do NOT trigger any background sync here.
+     */
     fun saveNote(note: Note) {
         Log.d("NoteViewModel", "saveNote: $note")
         viewModelScope.launch() {
@@ -106,6 +120,7 @@ class NoteViewModel @Inject constructor(
         viewModelScope.launch() {
             allNoteUseCase().collect { it ->
                 _getAllNotesFromDB.value = it
+                _notesInitiallyLoaded.value = true
             }
         }
     }
@@ -115,6 +130,7 @@ class NoteViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 getNoteDetailUseCase(noteId).collect { note ->
+                    Log.e("NoteViewModel", "Response : "+note)
                     _getNotesDetailByIdFromLocal.value = note
 
                 }
@@ -125,6 +141,11 @@ class NoteViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Persists edits locally only. As with [saveNote], the mapper resets
+     * `isSync = 0` so the row is queued for the next manual sync pass — no
+     * automatic upload is performed.
+     */
     fun updateNote(note: Note) {
         Log.e("NoteViewModel", "updateNote : "+note)
         viewModelScope.launch() {
@@ -140,19 +161,26 @@ class NoteViewModel @Inject constructor(
 
 
 
+    /**
+     * Deletes a note. Unlike create/update, deletion is the **one** flow that
+     * still touches Firestore directly — see [DeleteNoteUseCase]:
+     *
+     *  - Signed-in: the Firestore document is removed first; the Room row is
+     *    only purged on success. A failure surfaces as a `status = "error"`
+     *    response so the UI can show a retry toast.
+     *  - Signed-out: a local-only delete is performed.
+     */
     fun deleteNoteById(noteId: String) {
-        if(noteId!=""){
-            viewModelScope.launch() {
-                try {
-                    deleteNoteUseCase(noteId.toInt()).collect { it ->
-                        _notesDeleteFromLocal.value = it
-                    }
-                } catch (e: Exception) {
-                    Log.e("NoteViewModel", "Response : "+e.message.toString())
+        if (noteId.isEmpty()) return
+        viewModelScope.launch {
+            try {
+                deleteNoteUseCase(noteId.toInt()).collect { response ->
+                    _notesDeleteFromLocal.value = response
                 }
+            } catch (e: Exception) {
+                Log.e("NoteViewModel", "Delete failed: ${e.message}")
             }
         }
-
     }
 
     fun updateCurrentContentJson(contentJson: String) {
@@ -164,7 +192,15 @@ class NoteViewModel @Inject constructor(
       secureStorage.setManualAppPIN(pin)
     }
     fun getPin():String{
-        return secureStorage.getManualAppPIN("").toString()
+        return secureStorage.getManualAppPIN().orEmpty()
+    }
+
+    fun setFingerprintEnabled(enabled: Boolean) {
+        secureStorage.setFingerprintEnabled(enabled)
+    }
+
+    fun isFingerprintEnabled(): Boolean {
+        return secureStorage.isFingerprintEnabled()
     }
 
 }

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="recent_stuff">Recent Stuff</string>
+    <string name="see_all">See All</string>
+    <string name="simple_note">Simple Note</string>
+    <string name="scan_qr">Scan QR</string>
+    <string name="continue_with_google">Continue with Google</string>
+    <string name="access_your_notes_on_all_devices">Access your notes on all devices</string>
+    <string name="sync_with_google">Sync with Google</string>
+    <string name="sync">Sync</string>
+    <string name="your_notes">Your Notes</string>
+    <string name="back_up_and_access_your_notes_securely_across_all_your_devices">Back up and access your notes securely across all your devices</string>
+    <string name="sync_my_notes">Sync My Notes</string>
+</resources>

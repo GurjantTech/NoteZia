@@ -1,51 +1,73 @@
 [versions]
-agp = "8.12.0"
+accompanistSystemuicontroller = "0.36.0"
+agp = "9.0.1"
 appUpdate = "2.1.0"
-firebaseBom = "33.1.2"
-gson = "2.8.8"
-kotlin = "2.0.0"
-coreKtx = "1.16.0"
-junit = "4.13.2"
-junitVersion = "1.3.0"
-espressoCore = "3.7.0"
-lifecycleRuntimeKtx = "2.9.2"
-activityCompose = "1.10.1"
-composeBom = "2024.05.00"
-navigation_compose = "2.9.3"
-
-
-room_version = "2.7.2"
-room_ktx_version = "2.7.2"
+firebaseBom = "34.12.0"
+gson = "2.13.2"
+kotlin = "2.3.10"
+coreKtx = "1.17.0"
+lifecycleRuntimeKtx = "2.10.0"
+activityCompose = "1.12.4"
+composeBom = "2026.02.01"
+lifecycleViewmodelKtx = "2.10.0"
+material3 = "1.4.0"
+navigation_compose = "2.9.7"
+playServicesAds = "25.2.0"
+room_version = "2.8.4"
+room_ktx_version = "2.8.4"
 hiltVersion = "2.57"
-hilt_navigation_compose= "1.2.0"
-kotlinx_coroutines_core= "1.7.3"
-
+hilt_navigation_compose= "1.3.0"
 barcode-mlkit = "17.3.0"
 barcode-play = "18.3.1"
-camerax = "1.4.2"
-lottie-compose = "4.0.0"
-google_services_plugin_version = "4.4.1"
-firebase_crashlytics_plugin_version = "2.9.9"
-
+camerax = "1.5.3"
+lottie-compose = "6.7.1"
+google_services_plugin_version = "4.4.4"
+firebase_crashlytics_plugin_version = "3.0.6"
 biometric = "1.2.0-alpha05"
-
+securityCryptoKtx = "1.1.0"
+sqliteKtx = "2.6.2"
+uiGraphics = "1.10.4"
+foundation = "1.10.4"
+runtime = "1.10.4"
+appcompat = "1.7.1"
+kotlinxCoroutinesAndroid = "1.10.2"
+playServicesAuth = "21.5.1"
+credentials = "1.6.0"
+credentialsPlayServicesAuth = "1.6.0"
+googleid = "1.2.0"
+work = "2.10.0"
+hiltWork = "1.3.0"
+kotlinxCoroutinesPlayServices = "1.10.2"
+datastorePreferences = "1.1.1"
 
 
 [libraries]
+
+accompanist-systemuicontroller = { module = "com.google.accompanist:accompanist-systemuicontroller", version.ref = "accompanistSystemuicontroller" }
+androidx-compose-material3 = { module = "androidx.compose.material3:material3", version.ref = "material3" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 
+androidx-security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCryptoKtx" }
+androidx-security-crypto-ktx = { module = "androidx.security:security-crypto-ktx", version.ref = "securityCryptoKtx" }
+androidx-sqlite-ktx = { module = "androidx.sqlite:sqlite-ktx", version.ref = "sqliteKtx" }
 app-update = { module = "com.google.android.play:app-update", version.ref = "appUpdate" }
 app-update-ktx = { module = "com.google.android.play:app-update-ktx", version.ref = "appUpdate" }
 
 firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
+firebase-auth = { module = "com.google.firebase:firebase-auth" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics" }
+firebase-firestore = { module = "com.google.firebase:firebase-firestore" }
 firebase-messaging = { module = "com.google.firebase:firebase-messaging" }
 
+firebase-perf = { module = "com.google.firebase:firebase-perf" }
+androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
+androidx-hilt-work = { module = "androidx.hilt:hilt-work", version.ref = "hiltWork" }
+androidx-hilt-compiler = { module = "androidx.hilt:hilt-compiler", version.ref = "hiltWork" }
+kotlinx-coroutines-play-services = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services", version.ref = "kotlinxCoroutinesPlayServices" }
+androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
-junit = { group = "junit", name = "junit", version.ref = "junit" }
-androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
-androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
@@ -54,8 +76,8 @@ androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
-androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
-androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
+
+androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 androidx-navigation_compose = { group = "androidx.navigation",name="navigation-compose", version.ref = "navigation_compose" }
 
 androidx-rooms-runtime = { group = "androidx.room",name="room-runtime", version.ref = "room_version" }
@@ -66,10 +88,13 @@ hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref
 hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hiltVersion" }
 hilt-navigation-compose= { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hilt_navigation_compose" }
 
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinxCoroutinesAndroid" }
 
-
-kotlinx-coroutines-core= { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinx_coroutines_core" }
-
+androidx-credentials = { module = "androidx.credentials:credentials", version.ref = "credentials" }
+androidx-credentials-play-services-auth = { module = "androidx.credentials:credentials-play-services-auth", version.ref = "credentialsPlayServicesAuth" }
+googleid = { module = "com.google.android.libraries.identity.googleid:googleid", version.ref = "googleid" }
+play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "playServicesAuth" }
 
 barcode-mlkit = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "barcode-mlkit" }
 barcode-play = { group = "com.google.android.gms", name = "play-services-mlkit-barcode-scanning", version.ref = "barcode-play" }
@@ -77,9 +102,14 @@ barcode-play = { group = "com.google.android.gms", name = "play-services-mlkit-b
 camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
 camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
 camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
+
 lottie-compose = { module = "com.airbnb.android:lottie-compose", version.ref = "lottie-compose" }
 
 androidx-biometric = { module = "androidx.biometric:biometric", version.ref = "biometric"}
+play-services-ads = { module = "com.google.android.gms:play-services-ads", version.ref = "playServicesAds" }
+ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics", version.ref = "uiGraphics" }
+androidx-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
+androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "runtime" }
 
 
 

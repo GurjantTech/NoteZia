@@ -5,6 +5,7 @@ import com.app.data.local.dao.NoteDao
 import com.app.data.mapper.toDomain
 import com.app.data.mapper.toDomainForCreate
 import com.app.data.mapper.toDomainForUpdate
+import com.app.data.mapper.toRemoteUpsertEntity
 
 import com.app.domain.model.Note
 import com.app.domain.model.StandardResponse
@@ -73,7 +74,7 @@ class NoteRepositoryImpl (private val noteDao: NoteDao) : NoteRepository{
     }
 
     override suspend fun deleteNoteById(noteId: Int): Flow<StandardResponse> {
-        val response=noteDao.deleteNote(noteId)
+        val response = noteDao.deleteNote(noteId)
         return flow {
             if (response > 0) {
                 emit(StandardResponseEntity(
@@ -86,5 +87,24 @@ class NoteRepositoryImpl (private val noteDao: NoteDao) : NoteRepository{
         }
     }
 
+    override suspend fun getPendingSyncNotes(): List<Note> =
+        noteDao.getPendingSyncNotes().map { it.toDomain() }
 
+    override suspend fun markNoteSynced(noteId: Int) {
+        noteDao.markNoteSynced(noteId)
+    }
+
+    override suspend fun hasPendingSyncNotes(): Boolean =
+        noteDao.countPendingSyncNotes() > 0
+
+    override suspend fun getAllNotesSnapshot(): List<Note> =
+        noteDao.getAllNotes().map { it.toDomain() }
+
+    override suspend fun applyMergeResult(
+        remoteUpserts: List<Note>,
+        uploadedLocalIds: List<Int>
+    ) {
+        val entities = remoteUpserts.mapNotNull { it.toRemoteUpsertEntity() }
+        noteDao.applyMergeResult(entities, uploadedLocalIds)
+    }
 }

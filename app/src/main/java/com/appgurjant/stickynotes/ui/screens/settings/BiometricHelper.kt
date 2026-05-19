@@ -7,11 +7,26 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 
 class BiometricHelper(private val context: Context) {
+    fun canAuthenticate(): Int {
+        return BiometricManager.from(context)
+            .canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+    }
+
+    fun biometricSupportMessage(result: Int): String {
+        return when (result) {
+            BiometricManager.BIOMETRIC_SUCCESS -> "Biometric available"
+            BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE -> "Biometric hardware not available on this device."
+            BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE -> "Biometric sensor is currently unavailable."
+            BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> "No fingerprint enrolled. Add one in device settings."
+            else -> "Biometric authentication is not supported."
+        }
+    }
+
     fun showBiometricPrompt(
         activity: FragmentActivity,
         title: String = "Biometric Authentication",
         subtitle: String = "Authenticate to continue",
-        description: String = "Use your fingerprint or face to unlock",
+        description: String = "Use your fingerprint to unlock",
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
@@ -19,10 +34,8 @@ class BiometricHelper(private val context: Context) {
             .setTitle(title)
             .setSubtitle(subtitle)
             .setDescription(description)
-            .setAllowedAuthenticators(
-                BiometricManager.Authenticators.BIOMETRIC_STRONG
-                        or BiometricManager.Authenticators.DEVICE_CREDENTIAL
-            )
+            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+            .setNegativeButtonText("Use PIN")
             .build()
 
         val biometricPrompt = getBiometricPrompt(activity, onSuccess, onError)
@@ -51,7 +64,7 @@ class BiometricHelper(private val context: Context) {
 
                 override fun onAuthenticationFailed() {
                     super.onAuthenticationFailed()
-                    onError("Authentication failed")
+                    // Keep prompt active; avoid forcing PIN fallback for transient failed scans.
                 }
             })
     }
