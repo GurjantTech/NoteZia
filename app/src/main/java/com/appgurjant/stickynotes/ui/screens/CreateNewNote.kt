@@ -4,6 +4,7 @@ import android.content.Intent
 import android.speech.RecognizerIntent
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -87,12 +88,26 @@ fun CreateNewNote(navController: NavController, noteType: String, noteDescriptio
     val focusRequesters = remember { mutableMapOf<Int, FocusRequester>() }
     val canSave by remember(currentNoteType, viewModel.noteDescription, checklist) {
         derivedStateOf {
-            when (currentNoteType) {
-                AppEnum.CheckList.name -> checklist.any { it.text.trim().isNotEmpty() }
-                else -> viewModel.noteDescription.trim().isNotEmpty()
-            }
+            hasNoteContent(currentNoteType, viewModel.noteDescription, checklist)
         }
     }
+    var saveTriggered by remember { mutableStateOf(false) }
+
+    fun exitCreateNote() {
+        if (saveTriggered) return
+        if (canSave) {
+            saveTriggered = true
+            saveNewNote(
+                noteType = currentNoteType,
+                viewModel = viewModel,
+                checklist = checklist
+            )
+        } else {
+            navController.popBackStack()
+        }
+    }
+
+    BackHandler { exitCreateNote() }
 
     LaunchedEffect(noteType) {
         if (!noteDescription.isNullOrBlank()) {
@@ -137,8 +152,9 @@ fun CreateNewNote(navController: NavController, noteType: String, noteDescriptio
             .padding(horizontal = 14.dp, vertical = 10.dp),
         topBar = {
             EditorTopBar(
-                onBack = { navController.popBackStack() },
+                onBack = { exitCreateNote() },
                 onSave = {
+                    if (saveTriggered) return@EditorTopBar
                     val validationError = validateNoteInput(
                         noteType = currentNoteType,
                         noteDescription = viewModel.noteDescription,
@@ -149,6 +165,7 @@ fun CreateNewNote(navController: NavController, noteType: String, noteDescriptio
                         Toast.makeText(context, validationError, Toast.LENGTH_SHORT).show()
                         return@EditorTopBar
                     }
+                    saveTriggered = true
                     saveNewNote(
                         noteType = currentNoteType,
                         viewModel = viewModel,
@@ -409,6 +426,15 @@ private fun TrayAction(label: String, iconRes: Int, tint: Color, onClick: () -> 
     }
 }
 
+private fun hasNoteContent(
+    noteType: String,
+    noteDescription: String,
+    checklist: List<ChecklistItem>
+): Boolean = when (noteType) {
+    AppEnum.CheckList.name -> checklist.any { it.text.trim().isNotEmpty() }
+    else -> noteDescription.trim().isNotEmpty()
+}
+
 private fun saveNewNote(
     noteType: String,
     viewModel: NoteViewModel,
@@ -450,20 +476,12 @@ private fun validateNoteInput(
     checklist: List<ChecklistItem>,
     context: android.content.Context
 ): String? {
-    return when (noteType) {
-        AppEnum.CheckList.name -> {
-            if (checklist.none { it.text.trim().isNotEmpty() }) {
-                context.getString(R.string.validation_checklist_required)
-            } else {
-                null
-            }
-        }
-        else -> {
-            if (noteDescription.trim().isEmpty()) {
-                context.getString(R.string.validation_description_required)
-            } else {
-                null
-            }
+    return if (hasNoteContent(noteType, noteDescription, checklist)) {
+        null
+    } else {
+        when (noteType) {
+            AppEnum.CheckList.name -> context.getString(R.string.validation_checklist_required)
+            else -> context.getString(R.string.validation_description_required)
         }
     }
 }
