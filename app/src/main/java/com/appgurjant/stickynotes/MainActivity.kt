@@ -1,39 +1,26 @@
 package com.appgurjant.stickynotes
 
-import android.Manifest
 import android.app.AlertDialog
-import android.content.Context
 import android.content.pm.ActivityInfo
-import android.hardware.biometrics.BiometricManager
-import android.hardware.biometrics.BiometricPrompt
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import android.widget.Toast
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.rememberNavController
-
+import com.appgurjant.stickynotes.ads.AdsManager
 import com.appgurjant.stickynotes.navigation.NoteZyNavGraph
-
 import com.appgurjant.stickynotes.ui.theme.NotezyAppTheme
 import com.appgurjant.stickynotes.ui.theme.ThemeViewModel
-import com.appgurjant.stickynotes.ui.util.ads.InterstitialAdManager
-import com.appgurjant.stickynotes.ui.util.ads.RewardedAdManager
-import com.google.android.gms.ads.MobileAds
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
 import com.google.android.play.core.install.InstallStateUpdatedListener
 import com.google.android.play.core.install.model.AppUpdateType
 import com.google.android.play.core.install.model.InstallStatus
 import com.google.android.play.core.install.model.UpdateAvailability
 import com.google.firebase.FirebaseApp
-import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.messaging.FirebaseMessaging
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -44,14 +31,12 @@ class MainActivity : FragmentActivity() {
         AppUpdateManagerFactory.create(this)
     }
 
-    @Inject lateinit var interstitialAdManager: InterstitialAdManager
-    @Inject lateinit var rewardedAdManager: RewardedAdManager
+    @Inject lateinit var adsManager: AdsManager
 
     private val updateRequestCode = 100
 
     private val listener = InstallStateUpdatedListener { state ->
         if (state.installStatus() == InstallStatus.DOWNLOADED) {
-            // Show snackbar or dialog to restart
             showRestartDialog()
         }
     }
@@ -60,7 +45,7 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         FirebaseApp.initializeApp(this)
         enableEdgeToEdge()
-        requestedOrientation =  ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
         setContent {
             val themeViewModel: ThemeViewModel = hiltViewModel()
@@ -73,30 +58,21 @@ class MainActivity : FragmentActivity() {
                 NoteZyNavGraph(navController)
             }
         }
-        MobileAds.initialize(this) {
-            // Mute every full-screen ad (interstitial + rewarded) by default.
-            // The GMA SDK requires `initialize()` to complete before these
-            // setters can be called; doing it here — and BEFORE preloading —
-            // guarantees even the first ad is silent. `setAppVolume(0f)`
-            // covers creatives that ignore `setAppMuted`, so together they
-            // enforce zero audio output app-wide.
-            MobileAds.setAppMuted(true)
-            MobileAds.setAppVolume(0f)
-            interstitialAdManager.loadAd()
-            rewardedAdManager.loadAd()
-        }
+        
         checkForAppUpdate()
         getFirebaseToken()
-
-
-
+        
+        // Register Activity context with AdMob after UI is set up
+        // AdMob SDK is already initialized in Application.onCreate()
+        window.decorView.post {
+            Log.d("MainActivity", "Registering Activity with AdMob")
+            adsManager.registerActivity(this)
+        }
     }
 
-
     private fun getFirebaseToken() {
-        val token = FirebaseMessaging.getInstance().token
-        token.addOnSuccessListener {
-            Log.e("FirebaseToken:" ,it)
+        FirebaseMessaging.getInstance().token.addOnSuccessListener {
+            Log.e("FirebaseToken:", it)
         }
     }
 
@@ -116,10 +92,7 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun showRestartDialog() {
-        if (isFinishing || isDestroyed) {
-            return  // Don't show dialog if activity is finishing or destroyed
-        }
-        // You can replace this with Jetpack Compose AlertDialog
+        if (isFinishing || isDestroyed) return
         try {
             AlertDialog.Builder(this)
                 .setTitle("Update Ready")
@@ -132,7 +105,7 @@ class MainActivity : FragmentActivity() {
                     }
                 }
                 .setNegativeButton("Later", null)
-                .setCancelable(false) // Prevent dismissing by back button
+                .setCancelable(false)
                 .create()
                 .apply {
                     setCanceledOnTouchOutside(false)
@@ -145,6 +118,10 @@ class MainActivity : FragmentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Re-register Activity in case it was recreated
+        adsManager.registerActivity(this)
+        adsManager.preloadRewardedAd()
+        adsManager.preloadInterstitialAd()
         appUpdateManager.appUpdateInfo.addOnSuccessListener { appUpdateInfo ->
             if (!isFinishing && !isDestroyed &&
                 appUpdateInfo.installStatus() == InstallStatus.DOWNLOADED) {
@@ -155,7 +132,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onDestroy() {
         appUpdateManager.unregisterListener(listener)
+        adsManager.onActivityDestroyed()
         super.onDestroy()
     }
-
 }

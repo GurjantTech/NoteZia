@@ -4,7 +4,9 @@ package com.appgurjant.stickynotes.ui.screens
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
@@ -77,14 +79,14 @@ import com.app.domain.model.Note
 import com.app.domain.model.TextStyleConfig
 import com.appgurjant.stickynotes.AppUtil.AppEnum
 import com.appgurjant.stickynotes.AppUtil.currentTime
-import com.appgurjant.stickynotes.AppUtil.formatNoteTimeForUi
+import com.appgurjant.stickynotes.AppUtil.formatNoteFullTimeForUi
 import com.appgurjant.stickynotes.R
+import com.appgurjant.stickynotes.ads.rememberAdsManager
 import com.appgurjant.stickynotes.components.DeleteNoteAlertDialog
 import com.appgurjant.stickynotes.components.RichTextEditor
 
 import com.appgurjant.stickynotes.firebase.FirebaseEvent
 import com.appgurjant.stickynotes.navigation.Screen
-import com.appgurjant.stickynotes.ui.util.BannerAd
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 
@@ -94,8 +96,13 @@ fun NoteDetailScreen(
     navController: NavController,
     noteId: String
 ) {
-    val viewModel: NoteViewModel = hiltViewModel()
+    // Share the activity-scoped NoteViewModel with Dashboard / All Notes so
+    // deletes refresh the listing immediately from the same Room observer.
+    val activity = LocalActivity.current as ComponentActivity
+    val viewModel: NoteViewModel = hiltViewModel(activity)
+    val adsManager = rememberAdsManager()
     LaunchedEffect(noteId) {
+        viewModel.clearNoteDetailState()
         viewModel.getNoteById(noteId)
     }
 
@@ -124,6 +131,10 @@ fun NoteDetailScreen(
     val noteDeleteResponse = viewModel.notesDeleteFromLocal.collectAsState().value
     val context = LocalContext.current
 
+    fun leaveNoteDetail() {
+        navController.popBackStack(Screen.NoteDetailScreen.route, true)
+    }
+
     LaunchedEffect(noteDeleteResponse) {
         val response = noteDeleteResponse ?: return@LaunchedEffect
         // The use case emits an explicit "error" status when Firestore deletion
@@ -131,17 +142,27 @@ fun NoteDetailScreen(
         // and the user stays on the detail screen so they can retry.
         if (response.status.equals("error", ignoreCase = true)) {
             Toast.makeText(context, response.message, Toast.LENGTH_LONG).show()
+            viewModel.consumeDeleteResult()
         } else {
             FirebaseEvent.logEvent(context, FirebaseEvent.noteDeletedSuccessEvent)
             Toast.makeText(context, response.message, Toast.LENGTH_SHORT).show()
-            navController.popBackStack(Screen.NoteDetailScreen.route, true)
+            viewModel.consumeDeleteResult()
+            // Every 2nd successful delete may show an interstitial (also ≥60s apart).
+            adsManager.showInterstitialIfEligible(activity) {
+                leaveNoteDetail()
+            }
         }
     }
     LaunchedEffect(notesUpdateResponse) {
-        notesUpdateResponse?.let {
-            FirebaseEvent.logEvent(context, FirebaseEvent.noteUpdatedSuccessEvent)
-            navController.popBackStack(Screen.NoteDetailScreen.route, true)
+        val response = notesUpdateResponse ?: return@LaunchedEffect
+        // Ignore the synthetic "already deleted" ack so we do not double-navigate.
+        if (response.message.equals("Note already deleted", ignoreCase = true)) {
+            viewModel.consumeUpdateResult()
+            return@LaunchedEffect
         }
+        FirebaseEvent.logEvent(context, FirebaseEvent.noteUpdatedSuccessEvent)
+        viewModel.consumeUpdateResult()
+        leaveNoteDetail()
     }
 
 
@@ -159,7 +180,8 @@ fun NoteDetailScreen(
                 createdAtMillis = noteDetail.createdAtMillis,
                 updatedAtMillis = noteDetail.updatedAtMillis,
                 reminderAtMillis = noteDetail.reminderAtMillis,
-                isSync = noteDetail.isSync
+                isSync = noteDetail.isSync,
+                ownerUserId = noteDetail.ownerUserId
             )
             viewModel.updateNote(updatedNote)
 
@@ -257,14 +279,6 @@ fun NoteDetailUi(navController: NavController, noteDetail: Note, viewModel: Note
                         }
                 )
             }
-        },
-        bottomBar = {
-            BannerAd(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(vertical = 12.dp)
-            )
         }
     ) {
         TextField(
@@ -303,7 +317,7 @@ fun NoteDetailUi(navController: NavController, noteDetail: Note, viewModel: Note
                 }
         )
 
-        val timeLabel = formatNoteTimeForUi(noteDetail)
+        val timeLabel = formatNoteFullTimeForUi(noteDetail)
         if (timeLabel.isNotEmpty()) {
             Text(
                 timeLabel,
@@ -367,7 +381,8 @@ private fun updateNote(
                 createdAtMillis = noteDetail.createdAtMillis,
                 updatedAtMillis = noteDetail.updatedAtMillis,
                 reminderAtMillis = noteDetail.reminderAtMillis,
-                isSync = noteDetail.isSync
+                isSync = noteDetail.isSync,
+                ownerUserId = noteDetail.ownerUserId
             )
             viewModel.updateNote(updatedNote)
         }
@@ -385,7 +400,8 @@ private fun updateNote(
                     createdAtMillis = noteDetail.createdAtMillis,
                     updatedAtMillis = noteDetail.updatedAtMillis,
                     reminderAtMillis = noteDetail.reminderAtMillis,
-                    isSync = noteDetail.isSync
+                    isSync = noteDetail.isSync,
+                    ownerUserId = noteDetail.ownerUserId
                 )
                 viewModel.updateNote(updatedNote)
             } else {

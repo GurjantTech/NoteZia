@@ -12,8 +12,9 @@ import org.json.JSONObject
  * NoteEntity ↔ Note mappers.
  *
  * `isSync` is treated specially: every fresh write or update from the UI
- * resets the value to `0` so the next sync pass will pick it up. The DAO
- * later flips it to `1` once Firestore confirms the upload.
+ * resets the value to pending (`0`) so the automatic background sync pass
+ * will pick it up. The DAO later flips it to synced (`1`) once Firestore
+ * confirms the upload.
  */
 
 private fun TextStyleConfig?.toJsonString(): String? {
@@ -61,6 +62,7 @@ fun Note.toDomainForCreate(): NoteEntity {
         noteType = noteType,
         isSync = 0,
         isDeleted = 0,
+        ownerUserId = ownerUserId,
         createdAtMillis = created,
         updatedAtMillis = updated,
         reminderAtMillis = reminderAtMillis,
@@ -83,6 +85,7 @@ fun Note.toDomainForUpdate(): NoteEntity {
         noteType = noteType,
         isSync = 0,
         isDeleted = 0,
+        ownerUserId = ownerUserId,
         createdAtMillis = priorCreated,
         updatedAtMillis = now,
         reminderAtMillis = reminderAtMillis,
@@ -98,6 +101,7 @@ fun NoteEntity.toDomain() = Note(
     contentJson = this.contentJson,
     noteType = this.noteType,
     isSync = this.isSync,
+    ownerUserId = this.ownerUserId,
     createdAtMillis = this.createdAtMillis,
     updatedAtMillis = this.updatedAtMillis,
     reminderAtMillis = this.reminderAtMillis,
@@ -145,6 +149,7 @@ fun Note.toRemoteUpsertEntity(): NoteEntity? {
         noteType = noteType,
         isSync = 1,
         isDeleted = 0,
+        ownerUserId = ownerUserId,
         createdAtMillis = created,
         updatedAtMillis = updated,
         reminderAtMillis = reminderAtMillis,

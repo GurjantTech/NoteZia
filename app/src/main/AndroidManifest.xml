@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
@@ -16,6 +17,17 @@
         android:name="android.hardware.camera"
         android:required="false" />
 
+    <!-- Package visibility (Android 11+): lets AdMob reach Google Play Services. -->
+    <queries>
+        <package android:name="com.google.android.gms" />
+        <intent>
+            <action android:name="com.google.android.gms.ads.service.START" />
+        </intent>
+        <intent>
+            <action android:name="com.google.android.gms.ads.service.CACHE" />
+        </intent>
+    </queries>
+
     <application
         android:name="com.appgurjant.AppApplication"
         android:allowBackup="true"
@@ -27,6 +39,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.NotezyApp"
         android:localeConfig="@xml/locales_config"
+        android:hardwareAccelerated="true"
+        android:usesCleartextTraffic="false"
         tools:targetApi="33">
         <activity
             android:name="com.appgurjant.stickynotes.MainActivity"
@@ -50,17 +64,8 @@
 
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-2294761279203706~4458748082"/>
+            android:value="${admobAppId}"/>
 
-        <!--
-            AppApplication implements androidx.work.Configuration.Provider, which
-            enables on-demand WorkManager initialization via the injected
-            HiltWorkerFactory. The default auto-init via androidx.startup must
-            therefore be disabled — leaving it in causes a double-initialization
-            and a release-build lint fatal (RemoveWorkManagerInitializer).
-            We surgically remove only the WorkManagerInitializer node so any
-            other androidx.startup initializers continue to work normally.
-        -->
         <provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"

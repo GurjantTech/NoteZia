@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="recent_stuff">Recent Stuff</string>
+    <string name="recent_stuff">Recent Notes</string>
     <string name="see_all">See All</string>
     <string name="simple_note">Simple Note</string>
     <string name="scan_qr">Scan QR</string>

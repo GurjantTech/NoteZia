@@ -4,16 +4,22 @@ import com.app.domain.repository.AuthRepository
 import com.app.domain.repository.SyncScheduler
 
 /**
- * Generic "schedule a sync now" trigger. Callers don't need to know whether
- * the user is signed in — the use case checks for them.
+ * Runs an in-process Firestore sync when signed in, then also schedules
+ * WorkManager as a backup for offline / retry cases.
+ *
+ * Logged-out saves stay local in Room with no network work.
  */
 class RequestSyncUseCase(
     private val authRepository: AuthRepository,
-    private val syncScheduler: SyncScheduler
+    private val syncScheduler: SyncScheduler,
+    private val syncPendingNotesUseCase: SyncPendingNotesUseCase
 ) {
     suspend operator fun invoke() {
-        if (authRepository.getCurrentUser() != null) {
-            syncScheduler.requestImmediateSync()
-        }
+        if (authRepository.getCurrentUser() == null) return
+        // Prefer an immediate in-app sync so notes appear in Firestore without
+        // waiting on WorkManager quotas / delays.
+        runCatching { syncPendingNotesUseCase() }
+        syncScheduler.ensurePeriodicSync()
+        syncScheduler.requestImmediateSync()
     }
 }

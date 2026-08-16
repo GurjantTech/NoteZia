@@ -9,7 +9,7 @@ import com.app.data.local.entity.NoteEntity
 
 @Database(
     entities = [NoteEntity::class],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 abstract class NoteDatabase : RoomDatabase() {

@@ -6,15 +6,14 @@ import androidx.room.PrimaryKey
 /**
  * Local Room representation of a note.
  *
- * [isSync]: 0 = pending upload, 1 = synced. Mirrors `Note.isSync` in the
- * domain model. Migrated from schema v2 → v3 (see `AppModule`'s
- * `Migration_2_3`); existing rows default to 0 so they are uploaded on the
- * first manual "Sync My Notes" pass after the user signs in.
+ * [isSync]: persisted [com.app.domain.model.NoteSyncStatus] —
+ * 0 pending, 1 synced, 2 syncing, 3 failed. Migrated from schema v2 → v3
+ * (see `AppModule`'s `Migration_2_3`); existing rows default to 0 so they
+ * upload automatically after the user signs in.
  *
- * [isDeleted]: schema artifact from v5. Currently unused — deletion is
- * handled directly by `DeleteNoteUseCase` (immediate Firestore + local
- * removal). The column is preserved so existing v5 databases continue to
- * load without an additional migration; new rows are always written with 0.
+ * [isDeleted]: local tombstone for offline-safe deletion. Signed-in deletes
+ * flag the row here first; the sync worker then removes the Firestore
+ * document and hard-deletes the local row. Active queries exclude `1`.
  */
 @Entity(tableName = "notes")
 data class NoteEntity(
@@ -27,6 +26,8 @@ data class NoteEntity(
     val noteType: String? = "",
     val isSync: Int = 0,
     val isDeleted: Int = 0,
+    /** Firebase uid that owns this note; null = created while logged out. */
+    val ownerUserId: String? = null,
     val createdAtMillis: Long = 0L,
     val updatedAtMillis: Long = 0L,
     val reminderAtMillis: Long? = null,

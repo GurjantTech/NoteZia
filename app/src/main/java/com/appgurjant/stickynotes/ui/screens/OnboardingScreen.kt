@@ -149,7 +149,7 @@ fun OnboardingScreen(navController: NavController) {
     OnboardingScaffold(
         isDarkTheme = isDarkTheme,
         onThemeToggle = { themeViewModel.setDarkTheme(!isDarkTheme) },
-        onGoogleSignIn = { cloudSyncViewModel.signIn() },
+        onGoogleSignIn = { cloudSyncViewModel.signInWithGoogle() },
         onSkip = { finishOnboardingAndContinue() },
         onTermsClick = { openLegalUrl() },
         onPrivacyClick = { openLegalUrl() }

@@ -6,7 +6,7 @@ import androidx.room.Room
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.work.WorkManager
-import com.app.data.auth.GoogleAuthManager
+import com.app.data.auth.FirebaseAuthManager
 import com.app.data.auth.UserSessionStorage
 import com.app.data.local.NoteDatabase
 import com.app.data.local.NoteDatabaseFiles
@@ -27,27 +27,38 @@ import com.app.domain.repository.SecureRepository
 import com.app.domain.repository.SyncRepository
 import com.app.domain.repository.SyncScheduler
 import com.app.domain.repository.ThemeRepository
+import com.app.domain.usecase.ActivateCloudSyncUseCase
 import com.app.domain.usecase.AddNoteUseCase
 import com.app.domain.usecase.AllNoteUseCase
+import com.app.domain.usecase.CompletePhoneAutoSignInUseCase
 import com.app.domain.usecase.DeleteNoteUseCase
+import com.app.domain.usecase.DismissSyncBannerUseCase
 import com.app.domain.usecase.GetNoteDetailFromLocalUseCase
 import com.app.domain.usecase.GetThemeModeUseCase
+import com.app.domain.usecase.HasPendingNotesUseCase
+import com.app.domain.usecase.IsOnboardingCompletedUseCase
 import com.app.domain.usecase.ObserveCurrentUserUseCase
+import com.app.domain.usecase.ObserveSyncBannerDismissedUseCase
 import com.app.domain.usecase.RequestSyncUseCase
 import com.app.domain.usecase.SaveUserProfileUseCase
+import com.app.domain.usecase.SendPhoneVerificationCodeUseCase
+import com.app.domain.usecase.SetOnboardingCompletedUseCase
 import com.app.domain.usecase.SetThemeModeUseCase
 import com.app.domain.usecase.SignInWithGoogleUseCase
 import com.app.domain.usecase.SignOutUseCase
-import com.app.domain.usecase.HasPendingNotesUseCase
-import com.app.domain.usecase.IsOnboardingCompletedUseCase
-import com.app.domain.usecase.SetOnboardingCompletedUseCase
 import com.app.domain.usecase.SyncPendingNotesUseCase
 import com.app.domain.usecase.UpdateNoteDetailFromLocalUseCase
 import com.app.domain.usecase.UploadNoteUseCase
+import com.app.domain.usecase.VerifyPhoneCodeUseCase
+import com.app.data.local.CoinStorage
+import com.app.data.repository.CoinRepositoryImpl
+import com.app.domain.repository.CoinRepository
+import com.app.domain.usecase.ActivatePremiumTrialUseCase
+import com.app.domain.usecase.AddRewardedAdCoinsUseCase
+import com.app.domain.usecase.ObserveCoinStateUseCase
+import com.app.domain.usecase.UnlockSecurityUseCase
 import com.appgurjant.stickynotes.sync.WorkManagerSyncScheduler
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInClient
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.Module
 import dagger.Provides
@@ -88,8 +99,8 @@ class AppModule {
 
     /**
      * Adds the `isSync` column introduced for Google-account cloud sync. All
-     * existing rows are flagged as pending (`0`) so they upload on the user's
-     * first sign-in, never losing local data.
+     * existing rows are flagged as pending (`0`) so they upload automatically
+     * after the user signs in, never losing local data.
      */
     private val Migration_2_3 = object : Migration(2, 3) {
         override fun migrate(database: SupportSQLiteDatabase) {
@@ -181,6 +192,29 @@ class AppModule {
         }
     }
 
+    /** Adds Firebase uid ownership so notes never leak across account switches. */
+    private val Migration_5_6 = object : Migration(5, 6) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            try {
+                val cursor = database.query("PRAGMA table_info(notes)")
+                val existingColumns = mutableListOf<String>()
+                while (cursor.moveToNext()) {
+                    existingColumns.add(cursor.getString(cursor.getColumnIndexOrThrow("name")))
+                }
+                cursor.close()
+
+                if (!existingColumns.contains("ownerUserId")) {
+                    database.execSQL(
+                        "ALTER TABLE notes ADD COLUMN ownerUserId TEXT DEFAULT NULL"
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e("Migration", "Error during 5→6 migration", e)
+                throw e
+            }
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): NoteDatabase {
@@ -190,7 +224,7 @@ class AppModule {
             NoteDatabase::class.java,
             NoteDatabaseFiles.DATABASE_NAME
         )
-            .addMigrations(Migration_1_2, Migration_2_3, Migration_3_4, Migration_4_5)
+            .addMigrations(Migration_1_2, Migration_2_3, Migration_3_4, Migration_4_5, Migration_5_6)
             .fallbackToDestructiveMigration()
             .build()
     }
@@ -220,7 +254,10 @@ class AppModule {
     fun provideNoteDao(db: NoteDatabase): NoteDao = db.noteDao()
 
     @Provides
-    fun provideNoteRepository(noteDao: NoteDao): NoteRepository = NoteRepositoryImpl(noteDao)
+    fun provideNoteRepository(
+        noteDao: NoteDao,
+        authRepository: AuthRepository
+    ): NoteRepository = NoteRepositoryImpl(noteDao, authRepository)
 
     @Provides
     @Singleton
@@ -245,21 +282,28 @@ class AppModule {
     ) = SetOnboardingCompletedUseCase(onboardingRepository)
 
     @Provides
-    fun addNoteUseCase(noteRepository: NoteRepository) = AddNoteUseCase(noteRepository)
+    fun addNoteUseCase(
+        noteRepository: NoteRepository,
+        authRepository: AuthRepository,
+        requestSyncUseCase: RequestSyncUseCase
+    ) = AddNoteUseCase(noteRepository, authRepository, requestSyncUseCase)
     @Provides
     fun allNoteUseCase(noteRepository: NoteRepository) = AllNoteUseCase(noteRepository)
     @Provides
     fun getNoteDetailFromLocalUseCase(noteRepository: NoteRepository) = GetNoteDetailFromLocalUseCase(noteRepository)
     @Provides
-    fun updateNoteDetailFromLocalUseCase(noteRepository: NoteRepository) =
-        UpdateNoteDetailFromLocalUseCase(noteRepository)
+    fun updateNoteDetailFromLocalUseCase(
+        noteRepository: NoteRepository,
+        authRepository: AuthRepository,
+        requestSyncUseCase: RequestSyncUseCase
+    ) = UpdateNoteDetailFromLocalUseCase(noteRepository, authRepository, requestSyncUseCase)
 
     @Provides
     fun deleteNoteUseCase(
         noteRepository: NoteRepository,
-        firestoreRepository: FirestoreRepository,
-        authRepository: AuthRepository
-    ) = DeleteNoteUseCase(noteRepository, firestoreRepository, authRepository)
+        authRepository: AuthRepository,
+        requestSyncUseCase: RequestSyncUseCase
+    ) = DeleteNoteUseCase(noteRepository, authRepository, requestSyncUseCase)
 
     @Provides
     fun provideGetThemeModeUseCase(themeRepository: ThemeRepository): GetThemeModeUseCase {
@@ -273,33 +317,23 @@ class AppModule {
 
 
     // ============================================================
-    // Cloud-sync (Google Sign-In + Firestore + WorkManager)
+    // Cloud-sync (Firebase Auth + Firestore + WorkManager)
     // ============================================================
+
+    @Provides
+    @Singleton
+    fun provideFirebaseAuth(): FirebaseAuth = FirebaseAuth.getInstance()
 
     @Provides
     @Singleton
     fun provideFirebaseFirestore(): FirebaseFirestore = FirebaseFirestore.getInstance()
 
-    /**
-     * `GoogleSignInClient` is only used for [GoogleSignInClient.signOut] —
-     * the actual sign-in flow goes through Credential Manager via
-     * [GoogleAuthManager]. We still need a configured client so the user's
-     * account selection is properly cleared on logout.
-     */
     @Provides
     @Singleton
-    fun provideGoogleSignInClient(@ApplicationContext context: Context): GoogleSignInClient {
-        val options = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(GoogleAuthManager.WEB_CLIENT_ID)
-            .requestEmail()
-            .build()
-        return GoogleSignIn.getClient(context, options)
-    }
-
-    @Provides
-    @Singleton
-    fun provideGoogleAuthManager(@ApplicationContext context: Context): GoogleAuthManager =
-        GoogleAuthManager(context)
+    fun provideFirebaseAuthManager(
+        @ApplicationContext context: Context,
+        firebaseAuth: FirebaseAuth
+    ): FirebaseAuthManager = FirebaseAuthManager(context, firebaseAuth)
 
     @Provides
     @Singleton
@@ -309,10 +343,9 @@ class AppModule {
     @Provides
     @Singleton
     fun provideAuthRepository(
-        googleAuthManager: GoogleAuthManager,
-        sessionStorage: UserSessionStorage,
-        signInClient: GoogleSignInClient
-    ): AuthRepository = AuthRepositoryImpl(googleAuthManager, sessionStorage, signInClient)
+        firebaseAuthManager: FirebaseAuthManager,
+        sessionStorage: UserSessionStorage
+    ): AuthRepository = AuthRepositoryImpl(firebaseAuthManager, sessionStorage)
 
     @Provides
     @Singleton
@@ -341,16 +374,51 @@ class AppModule {
     // ---- cloud-sync use cases ----
 
     @Provides
+    fun provideActivateCloudSyncUseCase(
+        noteRepository: NoteRepository,
+        requestSyncUseCase: RequestSyncUseCase
+    ) = ActivateCloudSyncUseCase(noteRepository, requestSyncUseCase)
+
+    @Provides
     fun provideSignInWithGoogleUseCase(
         authRepository: AuthRepository,
-        firestoreRepository: FirestoreRepository
-    ) = SignInWithGoogleUseCase(authRepository, firestoreRepository)
+        firestoreRepository: FirestoreRepository,
+        activateCloudSyncUseCase: ActivateCloudSyncUseCase
+    ) = SignInWithGoogleUseCase(authRepository, firestoreRepository, activateCloudSyncUseCase)
 
     @Provides
     fun provideSignOutUseCase(
         authRepository: AuthRepository,
+        syncRepository: SyncRepository,
+        noteRepository: NoteRepository,
         syncScheduler: SyncScheduler
-    ) = SignOutUseCase(authRepository, syncScheduler)
+    ) = SignOutUseCase(authRepository, syncRepository, noteRepository, syncScheduler)
+
+    @Provides
+    fun provideSendPhoneVerificationCodeUseCase(
+        authRepository: AuthRepository
+    ) = SendPhoneVerificationCodeUseCase(authRepository)
+
+    @Provides
+    fun provideVerifyPhoneCodeUseCase(
+        authRepository: AuthRepository,
+        firestoreRepository: FirestoreRepository,
+        activateCloudSyncUseCase: ActivateCloudSyncUseCase
+    ) = VerifyPhoneCodeUseCase(authRepository, firestoreRepository, activateCloudSyncUseCase)
+
+    @Provides
+    fun provideCompletePhoneAutoSignInUseCase(
+        firestoreRepository: FirestoreRepository,
+        activateCloudSyncUseCase: ActivateCloudSyncUseCase
+    ) = CompletePhoneAutoSignInUseCase(firestoreRepository, activateCloudSyncUseCase)
+
+    @Provides
+    fun provideObserveSyncBannerDismissedUseCase(authRepository: AuthRepository) =
+        ObserveSyncBannerDismissedUseCase(authRepository)
+
+    @Provides
+    fun provideDismissSyncBannerUseCase(authRepository: AuthRepository) =
+        DismissSyncBannerUseCase(authRepository)
 
     @Provides
     fun provideSaveUserProfileUseCase(firestoreRepository: FirestoreRepository) =
@@ -375,10 +443,41 @@ class AppModule {
     @Provides
     fun provideRequestSyncUseCase(
         authRepository: AuthRepository,
-        syncScheduler: SyncScheduler
-    ) = RequestSyncUseCase(authRepository, syncScheduler)
+        syncScheduler: SyncScheduler,
+        syncPendingNotesUseCase: SyncPendingNotesUseCase
+    ) = RequestSyncUseCase(authRepository, syncScheduler, syncPendingNotesUseCase)
 
     @Provides
     fun provideObserveCurrentUserUseCase(authRepository: AuthRepository) =
         ObserveCurrentUserUseCase(authRepository)
+
+    // ============================================================
+    // Coin economy (rewarded ads → Security unlock → ad-free)
+    // ============================================================
+
+    @Provides
+    @Singleton
+    fun provideCoinStorage(@ApplicationContext context: Context): CoinStorage =
+        CoinStorage(context)
+
+    @Provides
+    @Singleton
+    fun provideCoinRepository(coinStorage: CoinStorage): CoinRepository =
+        CoinRepositoryImpl(coinStorage)
+
+    @Provides
+    fun provideObserveCoinStateUseCase(coinRepository: CoinRepository) =
+        ObserveCoinStateUseCase(coinRepository)
+
+    @Provides
+    fun provideAddRewardedAdCoinsUseCase(coinRepository: CoinRepository) =
+        AddRewardedAdCoinsUseCase(coinRepository)
+
+    @Provides
+    fun provideUnlockSecurityUseCase(coinRepository: CoinRepository) =
+        UnlockSecurityUseCase(coinRepository)
+
+    @Provides
+    fun provideActivatePremiumTrialUseCase(coinRepository: CoinRepository) =
+        ActivatePremiumTrialUseCase(coinRepository)
 }

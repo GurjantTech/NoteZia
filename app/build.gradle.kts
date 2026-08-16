@@ -13,17 +13,18 @@ plugins {
 
 android {
     namespace = "com.appgurjant.stickynotes"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.appgurjant.stickynotes"
         minSdk = 24
-        targetSdk = 36
-        versionCode = 34
-        versionName = "4.0.13"
+        targetSdk = 37
+        versionCode = 35
+        versionName = "4.0.14"
 //        versionCode = 500
 //        versionName = "500.0.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        manifestPlaceholders["admobAppId"] = "ca-app-pub-2294761279203706~4458748082"
         externalNativeBuild {
             // For ndk-build, instead use the ndkBuild block.
             cmake {
@@ -48,9 +49,12 @@ android {
     buildTypes {
         debug {
             isMinifyEnabled = false
+            // Google's official sample App ID — required for reliable test ads.
+            manifestPlaceholders["admobAppId"] = "ca-app-pub-3940256099942544~3347511713"
         }
         release {
             isMinifyEnabled = false
+            manifestPlaceholders["admobAppId"] = "ca-app-pub-2294761279203706~4458748082"
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -149,13 +153,13 @@ dependencies {
 
     implementation(libs.play.services.ads)
 
+
     implementation(libs.kotlinx.coroutines.android)
 
-    // google login
+    // Credential Manager — Google ID token is exchanged with Firebase Auth
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.googleid)
-    implementation(libs.play.services.auth)
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)

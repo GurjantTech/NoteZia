@@ -27,7 +27,10 @@ class UserSessionStorage(private val context: Context) {
     private val userNameKey = stringPreferencesKey(KEY_USER_NAME)
     private val userEmailKey = stringPreferencesKey(KEY_USER_EMAIL)
     private val userPhotoKey = stringPreferencesKey(KEY_USER_PHOTO_URL)
+    private val userPhoneKey = stringPreferencesKey(KEY_USER_PHONE)
     private val lastSyncKey = longPreferencesKey(KEY_LAST_SYNC_TIME)
+    private val lastSignedInUserIdKey = stringPreferencesKey(KEY_LAST_SIGNED_IN_USER_ID)
+    private val syncBannerDismissedKey = booleanPreferencesKey(KEY_SYNC_BANNER_DISMISSED)
 
     val currentUser: Flow<UserProfile?> = context.userSessionDataStore.data.map { prefs ->
         val loggedIn = prefs[isLoggedInKey] ?: false
@@ -39,6 +42,7 @@ class UserSessionStorage(private val context: Context) {
             name = prefs[userNameKey].orEmpty(),
             email = prefs[userEmailKey].orEmpty(),
             photoUrl = prefs[userPhotoKey].orEmpty(),
+            phoneNumber = prefs[userPhoneKey].orEmpty(),
             lastSyncTime = prefs[lastSyncKey] ?: 0L
         )
     }
@@ -52,6 +56,23 @@ class UserSessionStorage(private val context: Context) {
             prefs[userNameKey] = profile.name
             prefs[userEmailKey] = profile.email
             prefs[userPhotoKey] = profile.photoUrl
+            prefs[userPhoneKey] = profile.phoneNumber
+            prefs[lastSignedInUserIdKey] = profile.userId
+            prefs[syncBannerDismissedKey] = false
+        }
+    }
+
+    val lastSignedInUserId: Flow<String?> = context.userSessionDataStore.data.map { prefs ->
+        prefs[lastSignedInUserIdKey]?.takeIf { it.isNotBlank() }
+    }
+
+    val syncBannerDismissed: Flow<Boolean> = context.userSessionDataStore.data.map { prefs ->
+        prefs[syncBannerDismissedKey] ?: false
+    }
+
+    suspend fun dismissSyncBanner() {
+        context.userSessionDataStore.edit { prefs ->
+            prefs[syncBannerDismissedKey] = true
         }
     }
 
@@ -62,7 +83,13 @@ class UserSessionStorage(private val context: Context) {
     }
 
     suspend fun clear() {
-        context.userSessionDataStore.edit { prefs -> prefs.clear() }
+        context.userSessionDataStore.edit { prefs ->
+            val lastId = prefs[lastSignedInUserIdKey] ?: prefs[userIdKey]
+            prefs.clear()
+            if (!lastId.isNullOrBlank()) {
+                prefs[lastSignedInUserIdKey] = lastId
+            }
+        }
     }
 
     companion object {
@@ -71,6 +98,9 @@ class UserSessionStorage(private val context: Context) {
         const val KEY_USER_NAME = "user_name"
         const val KEY_USER_EMAIL = "user_email"
         const val KEY_USER_PHOTO_URL = "user_photo_url"
+        const val KEY_USER_PHONE = "user_phone"
         const val KEY_LAST_SYNC_TIME = "last_sync_time"
+        const val KEY_LAST_SIGNED_IN_USER_ID = "last_signed_in_user_id"
+        const val KEY_SYNC_BANNER_DISMISSED = "sync_banner_dismissed"
     }
 }

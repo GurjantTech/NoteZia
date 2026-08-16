@@ -5,8 +5,8 @@ import com.app.domain.repository.AuthRepository
 import com.app.domain.repository.SyncRepository
 
 /**
- * Uploads every local note flagged `isSync = 0` for the currently signed-in
- * user. If no user is signed in this is a no-op and returns an empty result —
+ * Runs a two-way Room ↔ Firestore sync for the currently signed-in user.
+ * If no user is signed in this is a no-op and returns an empty result —
  * matching spec: "If user is not logged in: keep notes local only".
  */
 class SyncPendingNotesUseCase(

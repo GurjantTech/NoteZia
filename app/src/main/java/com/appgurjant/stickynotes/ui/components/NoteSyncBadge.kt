@@ -11,14 +11,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.app.domain.model.NoteSyncStatus
 import com.appgurjant.stickynotes.R
 import com.appgurjant.stickynotes.ui.theme.notezyPalette
 
 /**
  * Per-note cloud sync indicator.
  *
- *  - `isSync = 1` → filled `CloudDone` (success-tinted) → "Synced".
- *  - `isSync = 0` → outlined `CloudOff` (muted)        → "Not synced".
+ *  - synced (`isSync = 1`) → filled `CloudDone` (success-tinted) → "Synced".
+ *  - otherwise             → outlined `CloudOff` (muted)        → "Not synced".
  *
  * Used wherever a note is rendered in a list (All Notes, Recent Stuff on the
  * dashboard, etc.). Kept tiny on purpose so it never competes visually with
@@ -31,7 +32,7 @@ fun NoteSyncBadge(
     size: Dp = 14.dp
 ) {
     val palette = MaterialTheme.notezyPalette
-    if (isSync == 1) {
+    if (NoteSyncStatus.isSynced(isSync)) {
         Icon(
             imageVector = Icons.Rounded.CloudDone,
             contentDescription = stringResource(R.string.note_sync_status_synced),

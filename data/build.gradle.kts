@@ -28,14 +28,14 @@ dependencies {
     kapt(libs.androidx.rooms.compiler)
     implementation(libs.androidx.rooms.ktx) // Kotlin Extensions and Coroutines support
 
-    // Firebase Firestore (cloud sync)
+    // Firebase (Auth + Firestore)
     implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
     implementation(libs.kotlinx.coroutines.play.services)
 
-    // Google Identity (Credential Manager) for the standalone Google Sign-In flow.
+    // Credential Manager + Google Identity — ID token fed into Firebase Auth
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.googleid)
-    implementation(libs.play.services.auth)
 }

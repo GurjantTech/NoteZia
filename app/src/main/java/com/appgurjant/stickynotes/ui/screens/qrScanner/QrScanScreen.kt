@@ -58,7 +58,6 @@ import com.appgurjant.stickynotes.R
 import com.appgurjant.stickynotes.components.AlertDialogBox
 import com.appgurjant.stickynotes.components.takeCameraPermission
 import com.appgurjant.stickynotes.ui.theme.notezyPalette
-import com.appgurjant.stickynotes.ui.util.BannerAd
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -88,15 +87,7 @@ fun QrScanScreen(navController: NavController) {
     }
 
     Scaffold(
-        containerColor = palette.screenBackground,
-        bottomBar = {
-            BannerAd(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(vertical = 12.dp)
-            )
-        }
+        containerColor = palette.screenBackground
     ) { innerPadding ->
         Box(
             modifier = Modifier

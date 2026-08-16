@@ -7,12 +7,15 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
 import com.app.data.local.entity.NoteEntity
-
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface NoteDao {
-    @Query("SELECT * FROM notes ORDER BY timeStamp DESC")
+    @Query("SELECT * FROM notes WHERE isDeleted = 0 ORDER BY timeStamp DESC")
     suspend fun getAllNotes(): List<NoteEntity>
+
+    @Query("SELECT * FROM notes WHERE isDeleted = 0 ORDER BY timeStamp DESC")
+    fun observeAllNotes(): Flow<List<NoteEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun saveNote(noteEntity: NoteEntity): Long
@@ -26,33 +29,62 @@ interface NoteDao {
     @Update
     suspend fun updateNote(noteEntity: NoteEntity): Int
 
-    /** Notes that haven't been pushed to Firestore yet. */
-    @Query("SELECT * FROM notes WHERE isSync = 0")
+    @Query("SELECT * FROM notes WHERE isDeleted = 0 AND isSync != 1")
     suspend fun getPendingSyncNotes(): List<NoteEntity>
 
-    /** Set isSync = 1 for a single note (used after a successful upload). */
     @Query("UPDATE notes SET isSync = 1 WHERE id = :noteId")
     suspend fun markNoteSynced(noteId: Int): Int
 
-    /** Reset all rows to pending — used after sign-in to force a full re-push. */
+    @Query("UPDATE notes SET isSync = :status WHERE id IN (:noteIds)")
+    suspend fun updateSyncStatus(noteIds: List<Int>, status: Int): Int
+
     @Query("UPDATE notes SET isSync = 0")
     suspend fun markAllPending(): Int
 
-    @Query("SELECT COUNT(*) FROM notes WHERE isSync = 0")
+    @Query("SELECT COUNT(*) FROM notes WHERE isDeleted = 0 AND isSync != 1")
     suspend fun countPendingSyncNotes(): Int
 
-    /**
-     * Atomic local side of the two-way merge.
-     *
-     * Each entry of [remoteUpserts] carries an explicit primary key — Room's
-     * [OnConflictStrategy.REPLACE] therefore overwrites the matching local
-     * row when it already exists or inserts a new one with the exact same id
-     * (keeping the local row's id in sync with its Firestore document id).
-     *
-     * [uploadedLocalIds] flips successfully-uploaded rows to `isSync = 1`
-     * inside the same transaction so a crash partway through cannot leave
-     * stale "pending" flags or partially-applied remote rows.
-     */
+    @Query(
+        """
+        UPDATE notes
+        SET isDeleted = 1,
+            isSync = 0,
+            updatedAtMillis = :now,
+            timeStamp = :nowText
+        WHERE id = :noteId
+        """
+    )
+    suspend fun tombstoneNote(noteId: Int, now: Long, nowText: String): Int
+
+    @Query("SELECT * FROM notes WHERE isDeleted = 1")
+    suspend fun getTombstonedNotes(): List<NoteEntity>
+
+    @Query("SELECT COUNT(*) FROM notes WHERE isDeleted = 1")
+    suspend fun countTombstonedNotes(): Int
+
+    /** Assign unclaimed local notes to [userId] and mark them pending for upload. */
+    @Query(
+        """
+        UPDATE notes
+        SET ownerUserId = :userId,
+            isSync = 0
+        WHERE isDeleted = 0
+          AND (ownerUserId IS NULL OR ownerUserId = '')
+        """
+    )
+    suspend fun claimUnownedNotesForUser(userId: String): Int
+
+    /** Queue every active note owned by [userId] for a Firestore upload pass. */
+    @Query(
+        """
+        UPDATE notes
+        SET isSync = 0
+        WHERE isDeleted = 0
+          AND ownerUserId = :userId
+        """
+    )
+    suspend fun markOwnedNotesPending(userId: String): Int
+
     @Transaction
     suspend fun applyMergeResult(
         remoteUpserts: List<NoteEntity>,

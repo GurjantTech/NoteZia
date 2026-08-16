@@ -18,6 +18,7 @@ import com.appgurjant.stickynotes.ui.screens.security.AppLockScreen
 import com.appgurjant.stickynotes.ui.screens.SplashScreen
 
 import com.appgurjant.stickynotes.ui.screens.settings.SettingScreen
+import com.appgurjant.stickynotes.ui.screens.signature.SignaturePracticeScreen
 
 
 @Composable
@@ -59,6 +60,9 @@ fun NoteZyNavGraph(navController:NavHostController){
      }
      composable(Screen.GoogleSignInScreen.route) {
          GoogleSignInScreen(navController)
+     }
+     composable(Screen.SignaturePracticeScreen.route) {
+         SignaturePracticeScreen(navController)
      }
 
  }

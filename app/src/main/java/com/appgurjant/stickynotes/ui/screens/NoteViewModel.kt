@@ -97,9 +97,8 @@ class NoteViewModel @Inject constructor(
     }
 
     /**
-     * Persists the note locally only. Cloud sync is now strictly manual: the
-     * row is stored with `isSync = 0` so the next "Sync My Notes" pass picks
-     * it up. We deliberately do NOT trigger any background sync here.
+     * Persists the note to Room. After a successful local write, [AddNoteUseCase]
+     * schedules a background Firebase sync so the UI never waits on the network.
      */
     fun saveNote(note: Note) {
         Log.d("NoteViewModel", "saveNote: $note")
@@ -114,9 +113,11 @@ class NoteViewModel @Inject constructor(
         }
     }
 
-
+    private var observingNotes = false
 
     fun getAllNotes() {
+        if (observingNotes) return
+        observingNotes = true
         viewModelScope.launch() {
             allNoteUseCase().collect { it ->
                 _getAllNotesFromDB.value = it
@@ -142,9 +143,9 @@ class NoteViewModel @Inject constructor(
     }
 
     /**
-     * Persists edits locally only. As with [saveNote], the mapper resets
-     * `isSync = 0` so the row is queued for the next manual sync pass — no
-     * automatic upload is performed.
+     * Persists edits to Room. The mapper resets `isSync` to pending so the
+     * background worker uploads the same note id after the local write
+     * succeeds — never on each keystroke.
      */
     fun updateNote(note: Note) {
         Log.e("NoteViewModel", "updateNote : "+note)
@@ -162,13 +163,10 @@ class NoteViewModel @Inject constructor(
 
 
     /**
-     * Deletes a note. Unlike create/update, deletion is the **one** flow that
-     * still touches Firestore directly — see [DeleteNoteUseCase]:
-     *
-     *  - Signed-in: the Firestore document is removed first; the Room row is
-     *    only purged on success. A failure surfaces as a `status = "error"`
-     *    response so the UI can show a retry toast.
-     *  - Signed-out: a local-only delete is performed.
+     * Deletes a note. Signed-in users get an immediate local tombstone so
+     * the note disappears even offline; [DeleteNoteUseCase] then schedules
+     * a background Firebase delete of the same id. Signed-out users get a
+     * local-only hard delete.
      */
     fun deleteNoteById(noteId: String) {
         if (noteId.isEmpty()) return
@@ -181,6 +179,21 @@ class NoteViewModel @Inject constructor(
                 Log.e("NoteViewModel", "Delete failed: ${e.message}")
             }
         }
+    }
+
+    /** Clears one-shot update/delete events after the UI has consumed them. */
+    fun consumeDeleteResult() {
+        _notesDeleteFromLocal.value = null
+    }
+
+    fun consumeUpdateResult() {
+        _notesUpdateInLocal.value = null
+    }
+
+    fun clearNoteDetailState() {
+        _getNotesDetailByIdFromLocal.value = null
+        _notesDeleteFromLocal.value = null
+        _notesUpdateInLocal.value = null
     }
 
     fun updateCurrentContentJson(contentJson: String) {

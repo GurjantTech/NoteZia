@@ -18,18 +18,30 @@ interface NoteRepository {
      */
     suspend fun deleteNoteById(noteId: Int): Flow<StandardResponse>
 
-    /** Returns every local note with `isSync = 0`. */
+    /** Returns every active local note that is not yet [com.app.domain.model.NoteSyncStatus.SYNCED]. */
     suspend fun getPendingSyncNotes(): List<Note>
 
     /** Mark a single local note as synced (`isSync = 1`). */
     suspend fun markNoteSynced(noteId: Int)
 
-    /** True if at least one local note is awaiting upload. */
+    /** Flip [noteIds] to the given [com.app.domain.model.NoteSyncStatus] value. */
+    suspend fun updateSyncStatus(noteIds: List<Int>, status: Int)
+
+    /**
+     * Hide [noteId] locally (tombstone) so the UI drops it immediately while
+     * the background worker replicates the delete to Firestore.
+     */
+    suspend fun tombstoneNote(noteId: Int): Boolean
+
+    /** Soft-deleted local rows waiting for a remote delete + local purge. */
+    suspend fun getTombstonedNotes(): List<Note>
+
+    /** True if at least one local note is awaiting upload or a tombstone flush. */
     suspend fun hasPendingSyncNotes(): Boolean
 
     /**
-     * Snapshot of every local note (no Flow wrapper) — used by the two-way
-     * sync merge to compare against the remote state.
+     * Snapshot of every *active* local note (no Flow wrapper, tombstones
+     * excluded) — used by the two-way sync merge to compare against remote.
      */
     suspend fun getAllNotesSnapshot(): List<Note>
 
@@ -46,4 +58,16 @@ interface NoteRepository {
         remoteUpserts: List<Note>,
         uploadedLocalIds: List<Int>
     )
+
+    /**
+     * Stamp every active note without an [Note.ownerUserId] with [userId] so
+     * they are never uploaded to a different Firebase account.
+     */
+    suspend fun claimUnownedNotesForUser(userId: String)
+
+    /**
+     * Mark every active note owned by [userId] as pending so the next sync
+     * pass uploads them to Firestore (including notes created before sign-in).
+     */
+    suspend fun markOwnedNotesPending(userId: String)
 }

@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -87,7 +86,6 @@ import com.appgurjant.stickynotes.ui.components.NoteSyncBadge
 import com.appgurjant.stickynotes.ui.screens.cloudsync.CloudSyncViewModel
 import com.appgurjant.stickynotes.ui.screens.NoteViewModel
 import com.appgurjant.stickynotes.ui.theme.notezyPalette
-import com.appgurjant.stickynotes.ui.util.BannerAd
 import com.appgurjant.stickynotes.ui.util.SetStatusBarColor
 import com.appgurjant.stickynotes.ui.util.ShowWelcomeNotification
 import java.util.Locale
@@ -206,12 +204,8 @@ fun DashboardScreen(navController: NavController) {
     val shouldShowWelcomeNotification by noteViewModel.shouldShowWelcomeNotification.collectAsState()
     val currentUser by cloudSyncViewModel.currentUser.collectAsState()
     val isSignedIn = currentUser != null
-
-    val pendingCount = remember(notes) {
-        notes.count { it.isSync == 0 }
-    }
-
-    val onDashboardSync = rememberDashboardSyncTrigger(navController)
+    val isSyncBannerDismissed by cloudSyncViewModel.isSyncBannerDismissed.collectAsState()
+    val showSyncBanner = !isSignedIn && !isSyncBannerDismissed
 
     val sortedNotes = remember(notes) {
         notes.sortedByDescending { it.effectiveUpdatedMillis() }
@@ -268,10 +262,7 @@ fun DashboardScreen(navController: NavController) {
                 }
             )
         },
-        floatingActionButtonPosition = FabPosition.End,
-        bottomBar = {
-            DashboardBannerBar()
-        }
+        floatingActionButtonPosition = FabPosition.End
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -281,82 +272,108 @@ fun DashboardScreen(navController: NavController) {
         ) {
             Spacer(modifier = Modifier.height(14.dp))
             DashboardHeader(
-                onSyncClick = onDashboardSync,
-                pendingCount = pendingCount,
-                isSignedIn = isSignedIn,
-                onProfileClick = { navController.navigate(Screen.SettingScreen.route) }
+                onProfileClick = { navController.navigate(Screen.GoogleSignInScreen.route) },
+                onSettingsClick = { navController.navigate(Screen.SettingScreen.route) }
             )
             Spacer(modifier = Modifier.height(12.dp))
             DashboardSearch(
                 query = searchQuery,
                 onQueryChange = noteViewModel::updateSearchQuery
             )
-            Spacer(modifier = Modifier.height(10.dp))
 
-            DailyVibeCard(randomQuote)
-
-            Spacer(modifier = Modifier.height(14.dp))
-            QuickActionGrid(
-                onSimpleNote = {
-                    FirebaseEvent.logEvent(context, FirebaseEvent.blankNoteEvent)
-                    navController.navigate(Screen.CreateNewNoteScreen.passNoteType(AppEnum.TextNote.name))
-                },
-                onChecklist = {
-                    FirebaseEvent.logEvent(context, FirebaseEvent.checkListNoteEvent)
-                    navController.navigate(Screen.CreateNewNoteScreen.passNoteType(AppEnum.CheckList.name))
-                },
-                onScanQr = {
-                    FirebaseEvent.logEvent(context, FirebaseEvent.qrNoteEvent)
-                    navController.navigate(Screen.QrScanScreen.route)
-                },
-                onVoice = {
-                    when (getCurrentAppLanguage(context)) {
-                        "hi" -> {
-                            FirebaseEvent.logEvent(context, FirebaseEvent.VoiceNoteInHindiEvent)
-                            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "hi-IN")
-                                putExtra(RecognizerIntent.EXTRA_PROMPT, "कुछ बोलें...")
-                            }
-                            voiceLauncher.launch(intent)
-                        }
-                        else -> {
-                            FirebaseEvent.logEvent(context, FirebaseEvent.VoiceNoteInEnglishEvent)
-                            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                                putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
-                                putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak something...")
-                            }
-                            voiceLauncher.launch(intent)
-                        }
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentPadding = PaddingValues(top = 10.dp, bottom = 88.dp),
+                verticalArrangement = Arrangement.spacedBy(0.dp)
+            ) {
+                if (showSyncBanner) {
+                    item(key = "sync_banner") {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        CloudSyncPromoBanner(
+                            onSignInClick = { navController.navigate(Screen.GoogleSignInScreen.route) },
+                            onDismiss = { cloudSyncViewModel.dismissSyncBanner() }
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
                     }
                 }
-            )
-            Spacer(modifier = Modifier.height(12.dp))
 
-            RecentHeader(
-                onSeeAllClick = { navController.navigate(Screen.AllNotesScreen.route) }
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            if (noteList.isEmpty()) {
-                Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "Your note space is empty.\nCreate your first note.",
-                        color = tokens.muted,
-                        fontSize = 14.sp,
-                        fontFamily = FontFamily(Font(R.font.inter_regular))
-                    )
+                item(key = "daily_vibe") {
+                    DailyVibeCard(randomQuote)
+                    Spacer(modifier = Modifier.height(14.dp))
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(bottom = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    items(noteList.take(10)) { note ->
+
+                item(key = "quick_actions") {
+                    QuickActionGrid(
+                        onSignaturePractice = {
+                            navController.navigate(Screen.SignaturePracticeScreen.route)
+                        },
+                        onChecklist = {
+                            FirebaseEvent.logEvent(context, FirebaseEvent.checkListNoteEvent)
+                            navController.navigate(Screen.CreateNewNoteScreen.passNoteType(AppEnum.CheckList.name))
+                        },
+                        onScanQr = {
+                            FirebaseEvent.logEvent(context, FirebaseEvent.qrNoteEvent)
+                            navController.navigate(Screen.QrScanScreen.route)
+                        },
+                        onVoice = {
+                            when (getCurrentAppLanguage(context)) {
+                                "hi" -> {
+                                    FirebaseEvent.logEvent(context, FirebaseEvent.VoiceNoteInHindiEvent)
+                                    val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                                        putExtra(RecognizerIntent.EXTRA_LANGUAGE, "hi-IN")
+                                        putExtra(RecognizerIntent.EXTRA_PROMPT, "कुछ बोलें...")
+                                    }
+                                    voiceLauncher.launch(intent)
+                                }
+                                else -> {
+                                    FirebaseEvent.logEvent(context, FirebaseEvent.VoiceNoteInEnglishEvent)
+                                    val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                                        putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+                                        putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak something...")
+                                    }
+                                    voiceLauncher.launch(intent)
+                                }
+                            }
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                item(key = "recent_header") {
+                    RecentHeader(
+                        onSeeAllClick = { navController.navigate(Screen.AllNotesScreen.route) }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                if (noteList.isEmpty()) {
+                    item(key = "empty_notes") {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 48.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Your note space is empty.\nCreate your first note.",
+                                color = tokens.muted,
+                                fontSize = 14.sp,
+                                fontFamily = FontFamily(Font(R.font.inter_regular))
+                            )
+                        }
+                    }
+                } else {
+                    items(
+                        items = noteList.take(5),
+                        key = { it.noteId }
+                    ) { note ->
                         RecentNoteCard(
                             note = note,
+                            isSignedIn = isSignedIn,
                             onClick = {
                                 navController.navigate(
                                     Screen.NoteDetailScreen.passNoteId(
@@ -366,6 +383,7 @@ fun DashboardScreen(navController: NavController) {
                                 )
                             }
                         )
+                        Spacer(modifier = Modifier.height(10.dp))
                     }
                 }
             }
@@ -375,10 +393,8 @@ fun DashboardScreen(navController: NavController) {
 
 @Composable
 private fun DashboardHeader(
-    onSyncClick: () -> Unit,
-    pendingCount: Int,
-    isSignedIn: Boolean,
-    onProfileClick: () -> Unit
+    onProfileClick: () -> Unit,
+    onSettingsClick: () -> Unit
 ) {
     val tokens = dashboardTokens()
     Row(
@@ -393,11 +409,6 @@ private fun DashboardHeader(
             color = tokens.heading
         )
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            DashboardSyncHeaderIcon(
-                pendingCount = pendingCount,
-                isSignedIn = isSignedIn,
-                onClick = onSyncClick
-            )
             Box(
                 modifier = Modifier
                     .size(36.dp)
@@ -405,6 +416,17 @@ private fun DashboardHeader(
                     .background(MaterialTheme.notezyPalette.surface)
                     .border(1.dp, tokens.iconButtonBorder, CircleShape)
                     .clickable(onClick = onProfileClick),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Person, contentDescription = "Profile", tint = tokens.heading, modifier = Modifier.size(18.dp))
+            }
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.notezyPalette.surface)
+                    .border(1.dp, tokens.iconButtonBorder, CircleShape)
+                    .clickable(onClick = onSettingsClick),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Default.Settings, contentDescription = "Settings", tint = tokens.heading, modifier = Modifier.size(18.dp))
@@ -509,7 +531,7 @@ private fun DailyVibeCard(randomQuote: String) {
 
 @Composable
 private fun QuickActionGrid(
-    onSimpleNote: () -> Unit,
+    onSignaturePractice: () -> Unit,
     onChecklist: () -> Unit,
     onScanQr: () -> Unit,
     onVoice: () -> Unit
@@ -519,10 +541,10 @@ private fun QuickActionGrid(
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
             QuickActionCard(
                 modifier = Modifier.weight(1f),
-                title = stringResource(R.string.simple_note),
+                title = stringResource(R.string.signature_practice),
                 style = styles[0],
-                iconRes = R.drawable.ic_blank_note,
-                onClick = onSimpleNote
+                iconRes = R.drawable.ic_drawing,
+                onClick = onSignaturePractice
             )
             QuickActionCard(
                 modifier = Modifier.weight(1f),
@@ -640,7 +662,7 @@ private fun RecentHeader(onSeeAllClick: () -> Unit) {
 }
 
 @Composable
-private fun RecentNoteCard(note: NoteType, onClick: () -> Unit) {
+private fun RecentNoteCard(note: NoteType, isSignedIn: Boolean, onClick: () -> Unit) {
     val tokens = dashboardTokens()
     val badge = when (note.typeOfNote) {
         AppEnum.CheckList.name -> "URGENT"
@@ -687,8 +709,10 @@ private fun RecentNoteCard(note: NoteType, onClick: () -> Unit) {
                         color = tokens.heading,
                         modifier = Modifier.weight(1f)
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    NoteSyncBadge(isSync = note.isSync, size = 12.dp)
+                    if (isSignedIn) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        NoteSyncBadge(isSync = note.isSync, size = 12.dp)
+                    }
                 }
                 Spacer(modifier = Modifier.height(5.dp))
                 Text(
@@ -705,17 +729,6 @@ private fun RecentNoteCard(note: NoteType, onClick: () -> Unit) {
 //            )
         }
     }
-}
-
-/** Banner strip at the bottom of the screen; [navigationBarsPadding] keeps it above system gestures. */
-@Composable
-private fun DashboardBannerBar() {
-    BannerAd(
-        modifier = Modifier
-            .fillMaxWidth()
-            .navigationBarsPadding()
-            .padding(top = 8.dp, bottom = 5.dp)
-    )
 }
 
 /** End-aligned FAB; Scaffold places it above [bottomBar] with standard bottom-end insets. */

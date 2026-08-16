@@ -21,7 +21,7 @@ interface FirestoreRepository {
     /**
      * Returns every non-deleted note stored under `users/{userId}/notes`.
      * Used by the two-way merge to discover remote-only or remote-newer
-     * documents during a manual sync pass.
+     * documents during an automatic background sync pass.
      */
     suspend fun fetchAllNotes(userId: String): List<Note>
 

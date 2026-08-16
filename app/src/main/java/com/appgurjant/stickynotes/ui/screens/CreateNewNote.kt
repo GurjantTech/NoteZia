@@ -66,11 +66,6 @@ import com.appgurjant.stickynotes.R
 import com.appgurjant.stickynotes.firebase.FirebaseEvent
 import com.appgurjant.stickynotes.navigation.Screen
 import com.appgurjant.stickynotes.ui.theme.notezyPalette
-import com.appgurjant.stickynotes.ui.util.BannerAd
-import com.appgurjant.stickynotes.ui.util.ads.AdCounterKeys
-import com.appgurjant.stickynotes.ui.util.ads.rememberAdsConfig
-import com.appgurjant.stickynotes.ui.util.ads.rememberInterstitialAdManager
-import androidx.fragment.app.FragmentActivity
 import com.google.gson.Gson
 import java.util.Locale
 
@@ -79,8 +74,6 @@ fun CreateNewNote(navController: NavController, noteType: String, noteDescriptio
     val viewModel: NoteViewModel = hiltViewModel()
     val palette = MaterialTheme.notezyPalette
     val context = LocalContext.current
-    val interstitialAdManager = rememberInterstitialAdManager()
-    val adsConfig = rememberAdsConfig()
     val noteState = viewModel.noteSaveState.collectAsState().value
 
     var currentNoteType by remember(noteType) { mutableStateOf(noteType) }
@@ -120,13 +113,6 @@ fun CreateNewNote(navController: NavController, noteType: String, noteDescriptio
         noteState?.let {
             FirebaseEvent.logEvent(context, FirebaseEvent.noteCreatedSuccessEvent)
             navController.popBackStack(Screen.CreateNewNoteScreen.route, true)
-            (context as? FragmentActivity)?.let { activity ->
-                interstitialAdManager.showAdEveryN(
-                    activity = activity,
-                    counterKey = AdCounterKeys.NOTE_CREATED,
-                    threshold = adsConfig.interstitialShowThreshold
-                )
-            }
         }
     }
 
@@ -213,12 +199,6 @@ fun CreateNewNote(navController: NavController, noteType: String, noteDescriptio
                 listLabel = if (currentNoteType == AppEnum.CheckList.name) "BLANK NOTE" else "CHECKLIST",
                 listIconRes = if (currentNoteType == AppEnum.CheckList.name) R.drawable.ic_blank_note else R.drawable.ic_checklist,
                 onSketch = {}
-            )
-            BannerAd(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(vertical = 12.dp)
             )
         }
     ) {

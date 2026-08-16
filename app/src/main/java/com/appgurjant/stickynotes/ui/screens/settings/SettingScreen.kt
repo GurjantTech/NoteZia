@@ -4,9 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.LocalActivity
-import androidx.compose.foundation.Image
 import androidx.fragment.app.FragmentActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,7 +17,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
@@ -30,10 +26,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AccountBox
 import androidx.compose.material.icons.rounded.ArrowBackIosNew
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Circle
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Fingerprint
 import androidx.compose.material.icons.rounded.Language
@@ -75,25 +69,16 @@ import com.appgurjant.stickynotes.ui.theme.ThemeViewModel
 import com.appgurjant.stickynotes.ui.theme.notezyPalette
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.res.painterResource
-import com.appgurjant.stickynotes.navigation.Screen
-import com.appgurjant.stickynotes.ui.util.BannerAd
-import com.appgurjant.stickynotes.ui.util.ads.AdCounterKeys
-import com.appgurjant.stickynotes.ui.util.ads.rememberAdsConfig
-import com.appgurjant.stickynotes.ui.util.ads.rememberInterstitialAdManager
-import com.appgurjant.stickynotes.ui.util.ads.rememberRewardedAdManager
-import com.appgurjant.stickynotes.ui.screens.settings.SetPinBottomSheet
-import androidx.compose.material.icons.rounded.ExitToApp
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
-import com.app.domain.model.SyncResult
-import com.app.domain.model.UserProfile
-import com.appgurjant.stickynotes.ui.screens.cloudsync.CloudSyncEvent
-import com.appgurjant.stickynotes.ui.screens.cloudsync.CloudSyncViewModel
-import com.appgurjant.stickynotes.ui.screens.cloudsync.SignInMessage
+import com.app.domain.model.CoinEconomy
+import com.app.domain.model.CoinState
+import com.appgurjant.stickynotes.ui.screens.settings.SetPinBottomSheet
+import java.util.concurrent.TimeUnit
 
 private const val NOTEZIA_PRIVACY_POLICY_URL =
     "https://sites.google.com/view/notezia-privacy-policy?usp=sharing"
@@ -103,77 +88,39 @@ fun SettingScreen(navController: NavController) {
     val context = LocalContext.current
     val noteViewModel: NoteViewModel = hiltViewModel()
     val themeViewModel: ThemeViewModel = hiltViewModel()
-    val cloudSyncViewModel: CloudSyncViewModel =
-        hiltViewModel(LocalActivity.current as ComponentActivity)
-    val interstitialAdManager = rememberInterstitialAdManager()
-    val rewardedAdManager = rememberRewardedAdManager()
-    val adsConfig = rememberAdsConfig()
+    val economyViewModel: SettingsEconomyViewModel = hiltViewModel()
     var isOpenBottomSheet by remember { mutableStateOf(false) }
     val isDarkTheme by themeViewModel.isDarkTheme.collectAsState()
     val isLightTheme = !isDarkTheme
     var passwordEnabled by remember { mutableStateOf(noteViewModel.getPin().isNotBlank()) }
     var biometricEnabled by remember { mutableStateOf(noteViewModel.isFingerprintEnabled()) }
-    val currentUser by cloudSyncViewModel.currentUser.collectAsState()
-    val isSyncing by cloudSyncViewModel.isSyncing.collectAsState()
-    val signInMessage by cloudSyncViewModel.signInMessage.collectAsState()
-    var showLogoutDialog by remember { mutableStateOf(false) }
+    val coinState by economyViewModel.coinState.collectAsState()
+    val isWatchingAd by economyViewModel.isWatchingAd.collectAsState()
+    val securityAdsWatched by economyViewModel.securityAdsWatched.collectAsState()
+    val premiumTrialAdsWatched by economyViewModel.premiumTrialAdsWatched.collectAsState()
+    var showAdFallbackDialog by remember { mutableStateOf(false) }
 
-    // Resolve translated strings inside the @Composable scope and pass them
-    // into the suspending LaunchedEffect below — `stringResource` cannot be
-    // called from inside coroutines, and `context.getString` from there is
-    // flagged by lint (LocalContextGetResourceValueCall).
-    val signInSuccessMessage = stringResource(R.string.sign_in_success_message)
-    val signInFailedTemplate = stringResource(R.string.sign_in_failed)
-    val signedOutMessage = stringResource(R.string.signed_out)
-
-    // Durable, one-shot sign-in result. Compose Navigation tears down this
-    // composition while GoogleSignInScreen is on top, so the SharedFlow
-    // event below would arrive at a dead collector — we route the toast
-    // through a StateFlow instead and consume() to prevent re-show on
-    // rotation.
-    LaunchedEffect(signInMessage) {
-        when (val msg = signInMessage) {
-            SignInMessage.Success -> {
-                showToast(context, signInSuccessMessage)
-                cloudSyncViewModel.consumeSignInMessage()
-            }
-            is SignInMessage.Failed -> {
-                showToast(context, signInFailedTemplate.format(msg.message))
-                cloudSyncViewModel.consumeSignInMessage()
-            }
-            null -> Unit
-        }
-    }
+    val adUnavailableMessage = stringResource(R.string.ad_unavailable)
+    val securityUnlockedMessage = stringResource(R.string.security_unlocked_toast)
+    val securityAlreadyUnlockedMessage = stringResource(R.string.security_already_unlocked)
+    val premiumActivatedMessage = stringResource(R.string.try_premium_activated)
+    val premiumAlreadyActiveMessage = stringResource(R.string.try_premium_already_active)
 
     LaunchedEffect(Unit) {
-        cloudSyncViewModel.events.collect { event ->
+        economyViewModel.events.collect { event ->
             when (event) {
-                // Sign-in success/failure toasts are routed via signInMessage
-                // (StateFlow) above so they survive cross-screen navigation.
-                is CloudSyncEvent.SignInSuccess,
-                is CloudSyncEvent.SignInFailed -> Unit
-                CloudSyncEvent.SignedOut -> showToast(context, signedOutMessage)
-                is CloudSyncEvent.SignOutFailed -> showToast(context, event.message)
-                is CloudSyncEvent.SyncFinished -> showToast(context, syncMessage(context, event.result))
-
-                // "Sync with Drive" pre-flight outcomes — see CloudSyncViewModel.requestSync.
-                CloudSyncEvent.SyncRequiresSignIn ->
-                    navController.navigate(Screen.GoogleSignInScreen.route)
-                CloudSyncEvent.SyncReady -> {
-                    // Signed in → ad first, then full two-way merge. The
-                    // post-sync toast (see syncMessage) handles the
-                    // "nothing-to-sync" case when the merge resolves with
-                    // attempted = 0.
-                    val activity = context as? FragmentActivity
-                    if (activity != null) {
-                        rewardedAdManager.showAd(
-                            activity = activity,
-                            onProceed = { cloudSyncViewModel.syncNow() }
-                        )
-                    } else {
-                        cloudSyncViewModel.syncNow()
-                    }
-                }
+                SettingsEconomyViewModel.EconomyEvent.AdUnavailable ->
+                    showToast(context, adUnavailableMessage)
+                SettingsEconomyViewModel.EconomyEvent.AdSystemFailedUseFallback ->
+                    showAdFallbackDialog = true
+                SettingsEconomyViewModel.EconomyEvent.SecurityUnlocked ->
+                    showToast(context, securityUnlockedMessage)
+                SettingsEconomyViewModel.EconomyEvent.SecurityAlreadyUnlocked ->
+                    showToast(context, securityAlreadyUnlockedMessage)
+                SettingsEconomyViewModel.EconomyEvent.PremiumTrialActivated ->
+                    showToast(context, premiumActivatedMessage)
+                SettingsEconomyViewModel.EconomyEvent.PremiumAlreadyActive ->
+                    showToast(context, premiumAlreadyActiveMessage)
             }
         }
     }
@@ -218,7 +165,6 @@ fun SettingScreen(navController: NavController) {
             onSuccess = {
                 setBiometricEnabled(true)
                 showToast(context, "Biometric authentication enabled")
-                interstitialAdManager.showAd(activity)
             },
             onError = { error ->
                 setBiometricEnabled(false)
@@ -233,26 +179,38 @@ fun SettingScreen(navController: NavController) {
                 isOpenBottomSheet = false
                 noteViewModel.setAppPin(it)
                 passwordEnabled = true
-                (context as? FragmentActivity)?.let {
-                    interstitialAdManager.showAd(it)
-                }
             }
         }
     }
 
     SettingScreenUi(
         navController = navController,
+        coinState = coinState,
+        isWatchingAd = isWatchingAd,
+        securityAdsWatched = securityAdsWatched,
+        premiumTrialAdsWatched = premiumTrialAdsWatched,
+        onTryPremiumClick = {
+            if (coinState.isPremiumActive || isWatchingAd) return@SettingScreenUi
+            val activity = context as? FragmentActivity
+            if (activity == null) {
+                showToast(context, adUnavailableMessage)
+                return@SettingScreenUi
+            }
+            economyViewModel.watchPremiumTrialAd(activity)
+        },
+        onUnlockSecurityAdsClick = {
+            if (coinState.hasSecurityAccess || isWatchingAd) return@SettingScreenUi
+            val activity = context as? FragmentActivity
+            if (activity == null) {
+                showToast(context, adUnavailableMessage)
+                return@SettingScreenUi
+            }
+            economyViewModel.watchSecurityUnlockAd(activity)
+        },
         isLightTheme = isLightTheme,
         onThemeSelected = { selectedLight ->
             if (selectedLight != isLightTheme) {
                 themeViewModel.setDarkTheme(!selectedLight)
-                (context as? FragmentActivity)?.let { activity ->
-                    interstitialAdManager.showAdEveryN(
-                        activity = activity,
-                        counterKey = AdCounterKeys.THEME_CHANGED,
-                        threshold = adsConfig.interstitialShowThreshold
-                    )
-                }
             }
         },
         passwordEnabled = passwordEnabled,
@@ -270,23 +228,6 @@ fun SettingScreen(navController: NavController) {
         },
         biometricEnabled = biometricEnabled,
         onBiometricToggle = { enabled -> handleBiometricToggle(enabled) },
-        currentUser = currentUser,
-        isSyncing = isSyncing,
-        onAccountClick = {
-            if (currentUser == null) {
-                navController.navigate(Screen.GoogleSignInScreen.route)
-            } else {
-                showLogoutDialog = true
-            }
-        },
-        onSyncWithDriveClick = {
-            // Pre-flight gate. The ViewModel decides whether the user needs
-            // to sign in or is ready to run the full two-way merge — we
-            // react in the events collector above. The merge itself handles
-            // both upload and download, so even a freshly signed-in device
-            // with zero local notes still pulls the remote backlog.
-            cloudSyncViewModel.requestSync()
-        },
         onShareAppClick = {
             FirebaseEvent.logEvent(context, FirebaseEvent.appShareEvent)
             shareApp(context)
@@ -303,19 +244,25 @@ fun SettingScreen(navController: NavController) {
         onTermsClick = { openUrlInBrowser(context, NOTEZIA_PRIVACY_POLICY_URL) }
     )
 
-    if (showLogoutDialog && currentUser != null) {
+    if (showAdFallbackDialog) {
         AlertDialog(
-            onDismissRequest = { showLogoutDialog = false },
-            title = { Text(stringResource(R.string.logout_confirm_title)) },
-            text = { Text(stringResource(R.string.logout_confirm_message)) },
+            onDismissRequest = { showAdFallbackDialog = false },
+            title = { Text("Ad System Not Working") },
+            text = {
+                Text(
+                    "Ads are not available on your device. You can still unlock Security for this session as a temporary workaround."
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
-                    showLogoutDialog = false
-                    cloudSyncViewModel.signOut()
-                }) { Text(stringResource(R.string.logout)) }
+                    showAdFallbackDialog = false
+                    economyViewModel.grantFallbackSecurityUnlock()
+                }) {
+                    Text("Unlock Security")
+                }
             },
             dismissButton = {
-                TextButton(onClick = { showLogoutDialog = false }) {
+                TextButton(onClick = { showAdFallbackDialog = false }) {
                     Text(stringResource(R.string.cancel))
                 }
             }
@@ -323,27 +270,22 @@ fun SettingScreen(navController: NavController) {
     }
 }
 
-private fun syncMessage(context: Context, result: SyncResult): String = when {
-    result.errorMessage != null -> context.getString(R.string.sync_failed, result.errorMessage)
-    result.attempted == 0 -> context.getString(R.string.sync_no_pending)
-    result.failed == 0 -> context.getString(R.string.sync_completed)
-    else -> context.getString(R.string.sync_partial, result.succeeded, result.attempted)
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingScreenUi(
     navController: NavController,
+    coinState: CoinState,
+    isWatchingAd: Boolean,
+    securityAdsWatched: Int,
+    premiumTrialAdsWatched: Int,
+    onTryPremiumClick: () -> Unit,
+    onUnlockSecurityAdsClick: () -> Unit,
     isLightTheme: Boolean,
     onThemeSelected: (Boolean) -> Unit,
     passwordEnabled: Boolean,
     onPasswordToggle: (Boolean) -> Unit,
     biometricEnabled: Boolean,
     onBiometricToggle: (Boolean) -> Unit,
-    currentUser: UserProfile?,
-    isSyncing: Boolean,
-    onAccountClick: () -> Unit,
-    onSyncWithDriveClick: () -> Unit,
     onShareAppClick: () -> Unit,
     onRateStoreClick: () -> Unit,
     onChangeLanguageClick: () -> Unit,
@@ -372,21 +314,7 @@ fun SettingScreenUi(
                             .padding(start = 12.dp)
                             .clickable { navController.popBackStack() }
                     )
-                },
-                actions = {
-                    DriveSyncPill(
-                        isSyncing = isSyncing,
-                        onClick = onSyncWithDriveClick
-                    )
                 }
-            )
-        },
-        bottomBar = {
-            BannerAd(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(vertical = 12.dp)
             )
         }
     ) { paddingValues ->
@@ -416,6 +344,57 @@ fun SettingScreenUi(
                 }
             }
 
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                TryPremiumCard(
+                    isPremiumActive = coinState.isPremiumActive,
+                    premiumRemainingMs = coinState.premiumRemainingMs,
+                    adsWatched = premiumTrialAdsWatched,
+                    adsRequired = CoinEconomy.PREMIUM_TRIAL_ADS_REQUIRED,
+                    isWatchingAd = isWatchingAd,
+                    showWatchButton = !coinState.isPremiumActive,
+                    onWatchClick = onTryPremiumClick
+                )
+            }
+
+            item { SectionTitle(stringResource(R.string.security), palette.brandAccent) }
+            item {
+                if (coinState.hasSecurityAccess) {
+                    SettingsGroupCard {
+                        Text(
+                            text = stringResource(R.string.security_unlocked_session),
+                            color = palette.brandPrimary,
+                            fontFamily = FontFamily(Font(R.font.inter_semibold)),
+                            fontSize = 13.sp,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
+                        )
+                        SecurityRow(
+                            title = stringResource(R.string.enable_password),
+                            subtitle = stringResource(R.string.require_code_to_open_notezia),
+                            icon = Icons.Rounded.Lock,
+                            iconTint = palette.brandPrimary,
+                            enabled = passwordEnabled,
+                            onToggle = onPasswordToggle
+                        )
+                        SecurityRow(
+                            title = stringResource(R.string.enable_biometric),
+                            subtitle = stringResource(R.string.biometric_unlock_subtitle),
+                            icon = Icons.Rounded.Fingerprint,
+                            iconTint = palette.brandAccent,
+                            enabled = biometricEnabled,
+                            onToggle = onBiometricToggle
+                        )
+                    }
+                } else {
+                    UnlockSecurityAdsCard(
+                        adsWatched = securityAdsWatched,
+                        adsRequired = CoinEconomy.SECURITY_UNLOCK_ADS_REQUIRED,
+                        isWatchingAd = isWatchingAd,
+                        onWatchClick = onUnlockSecurityAdsClick
+                    )
+                }
+            }
+
             item { SectionTitle(stringResource(R.string.quick_actions), palette.brandPrimary) }
             item {
                 QuickActionsRow(
@@ -423,40 +402,6 @@ fun SettingScreenUi(
                     onRateStoreClick = onRateStoreClick,
                     onChangeLanguageClick = onChangeLanguageClick
                 )
-            }
-
-            item { SectionTitle(stringResource(R.string.security), palette.brandAccent) }
-            item {
-                SettingsGroupCard {
-                    SecurityRow(
-                        title = stringResource(R.string.enable_password),
-                        subtitle = stringResource(R.string.require_code_to_open_notezia),
-                        icon = Icons.Rounded.Lock,
-                        iconTint = palette.brandPrimary,
-                        enabled = passwordEnabled,
-                        onToggle = onPasswordToggle
-                    )
-                    SecurityRow(
-                        title = stringResource(R.string.enable_biometric),
-                        subtitle = stringResource(R.string.biometric_unlock_subtitle),
-                        icon = Icons.Rounded.Fingerprint,
-                        iconTint = palette.brandAccent,
-                        enabled = biometricEnabled,
-                        onToggle = onBiometricToggle
-                    )
-                }
-            }
-
-            item { SectionTitle(stringResource(R.string.account_data), palette.textMuted) }
-
-            item {
-                SettingsGroupCard {
-                    GoogleAccountCard(
-                        user = currentUser,
-                        onClick = onAccountClick
-                    )
-                }
-
             }
 
             item { Spacer(modifier = Modifier.height(24.dp)) }
@@ -492,42 +437,6 @@ fun SettingScreenUi(
                 }
             }
             item { Spacer(modifier = Modifier.height(26.dp)) }
-        }
-    }
-}
-
-@Composable
-private fun DriveSyncPill(isSyncing: Boolean, onClick: () -> Unit) {
-    val palette = MaterialTheme.notezyPalette
-    Row(
-        modifier = Modifier
-            .background(palette.successBackground, RoundedCornerShape(28.dp))
-            .border(1.dp, palette.successBorder, RoundedCornerShape(28.dp))
-            .clickable(enabled = !isSyncing, onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        if (isSyncing) {
-            CircularProgressIndicator(
-                color = palette.successDot,
-                strokeWidth = 1.5.dp,
-                modifier = Modifier.size(12.dp)
-            )
-            Text(
-                text = stringResource(R.string.sync_in_progress),
-                color = palette.successText,
-                fontFamily = FontFamily(Font(R.font.inter_semibold)),
-                fontSize = 10.sp
-            )
-        } else {
-            Icon(Icons.Rounded.Circle, contentDescription = null, tint = palette.successDot, modifier = Modifier.size(10.dp))
-            Text(
-                text = stringResource(R.string.sync_my_notes),
-                color = palette.successText,
-                fontFamily = FontFamily(Font(R.font.inter_semibold)),
-                fontSize = 10.sp
-            )
         }
     }
 }
@@ -608,6 +517,161 @@ private fun ThemeCard(
 }
 
 @Composable
+private fun TryPremiumCard(
+    isPremiumActive: Boolean,
+    premiumRemainingMs: Long,
+    adsWatched: Int,
+    adsRequired: Int,
+    isWatchingAd: Boolean,
+    showWatchButton: Boolean,
+    onWatchClick: () -> Unit
+) {
+    val palette = MaterialTheme.notezyPalette
+    SettingsGroupCard {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            if (isPremiumActive) {
+                Text(
+                    text = stringResource(R.string.try_premium_active_title),
+                    color = palette.brandPrimary,
+                    fontFamily = FontFamily(Font(R.font.inter_bold)),
+                    fontSize = 14.sp
+                )
+                Text(
+                    text = stringResource(
+                        R.string.try_premium_expires_in,
+                        formatPremiumRemaining(premiumRemainingMs)
+                    ),
+                    color = palette.textSecondary,
+                    fontFamily = FontFamily(Font(R.font.inter_semibold)),
+                    fontSize = 13.sp
+                )
+            } else {
+                Text(
+                    text = stringResource(R.string.try_premium_title),
+                    color = palette.textPrimary,
+                    fontFamily = FontFamily(Font(R.font.inter_bold)),
+                    fontSize = 14.sp
+                )
+                Text(
+                    text = stringResource(R.string.try_premium_subtitle),
+                    color = palette.textSecondary,
+                    fontFamily = FontFamily(Font(R.font.inter_regular)),
+                    fontSize = 12.sp
+                )
+                if (showWatchButton) {
+                    Button(
+                        onClick = onWatchClick,
+                        enabled = !isWatchingAd,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = palette.brandPrimary,
+                            contentColor = Color.White,
+                            disabledContainerColor = palette.brandPrimary.copy(alpha = 0.5f),
+                            disabledContentColor = Color.White.copy(alpha = 0.8f)
+                        )
+                    ) {
+                        if (isWatchingAd) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text(
+                                text = stringResource(
+                                    R.string.try_premium_watch_ads,
+                                    adsWatched,
+                                    adsRequired
+                                ),
+                                fontFamily = FontFamily(Font(R.font.inter_bold)),
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun formatPremiumRemaining(remainingMs: Long): String {
+    val hours = TimeUnit.MILLISECONDS.toHours(remainingMs)
+    val minutes = TimeUnit.MILLISECONDS.toMinutes(remainingMs) % 60
+    return when {
+        hours > 0 -> "${hours}h ${minutes}m"
+        minutes > 0 -> "${minutes}m"
+        else -> "<1m"
+    }
+}
+
+@Composable
+private fun UnlockSecurityAdsCard(
+    adsWatched: Int,
+    adsRequired: Int,
+    isWatchingAd: Boolean,
+    onWatchClick: () -> Unit
+) {
+    val palette = MaterialTheme.notezyPalette
+    SettingsGroupCard {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.security_unlock_title),
+                color = palette.textPrimary,
+                fontFamily = FontFamily(Font(R.font.inter_bold)),
+                fontSize = 14.sp
+            )
+            Text(
+                text = stringResource(R.string.security_unlock_subtitle),
+                color = palette.textSecondary,
+                fontFamily = FontFamily(Font(R.font.inter_regular)),
+                fontSize = 12.sp
+            )
+            Button(
+                onClick = onWatchClick,
+                enabled = !isWatchingAd,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = palette.brandPrimary,
+                    contentColor = Color.White,
+                    disabledContainerColor = palette.brandPrimary.copy(alpha = 0.5f),
+                    disabledContentColor = Color.White.copy(alpha = 0.8f)
+                )
+            ) {
+                if (isWatchingAd) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text(
+                        text = stringResource(
+                            R.string.security_watch_ads,
+                            adsWatched,
+                            adsRequired
+                        ),
+                        fontFamily = FontFamily(Font(R.font.inter_bold)),
+                        fontSize = 14.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun SettingsGroupCard(content: @Composable ColumnScope.() -> Unit) {
     val palette = MaterialTheme.notezyPalette
     Box(
@@ -669,89 +733,6 @@ private fun SecurityRow(
                 uncheckedTrackColor = palette.outline
             )
         )
-    }
-}
-
-/**
- * Single account row that adapts to sign-in state:
- *  - Logged out: looks like a "Sync with Google" prompt; tap → sign-in screen.
- *  - Logged in: shows the user's name + email + initial-avatar. Tap → logout confirmation.
- * Manual sync runs from the app bar "Sync with Drive" action only.
- */
-@Composable
-private fun GoogleAccountCard(
-    user: UserProfile?,
-    onClick: () -> Unit
-) {
-    val palette = MaterialTheme.notezyPalette
-    CardShell(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        bg = palette.surface
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            AccountAvatar(user = user)
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = user?.name?.takeIf { it.isNotBlank() }
-                        ?: user?.email?.takeIf { it.isNotBlank() }
-                        ?: stringResource(R.string.sync_with_google),
-                    color = palette.textPrimary,
-                    fontFamily = FontFamily(Font(R.font.inter_bold)),
-                    fontSize = 14.sp
-                )
-                Text(
-                    text = user?.email?.takeIf { it.isNotBlank() }
-                        ?: stringResource(R.string.cloud_sync_subtitle),
-                    color = palette.textSecondary,
-                    fontFamily = FontFamily(Font(R.font.inter_regular)),
-                    fontSize = 12.sp
-                )
-            }
-            if (user != null) {
-                Icon(Icons.Rounded.ExitToApp, contentDescription = null, tint = palette.textMuted)
-            } else {
-                Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = palette.textMuted)
-            }
-        }
-    }
-}
-
-@Composable
-private fun AccountAvatar(user: UserProfile?) {
-    val palette = MaterialTheme.notezyPalette
-    Box(
-        modifier = Modifier
-            .size(42.dp)
-            .background(palette.screenBackground, RoundedCornerShape(12.dp)),
-        contentAlignment = Alignment.Center
-    ) {
-        if (user == null) {
-            Image(
-                painter = painterResource(R.drawable.ic_google_g_colored),
-                contentDescription = stringResource(R.string.sync_with_google)
-            )
-        } else {
-            Text(
-                text = avatarInitials(user),
-                color = palette.brandPrimary,
-                fontFamily = FontFamily(Font(R.font.inter_bold)),
-                fontSize = 16.sp
-            )
-        }
-    }
-}
-
-private fun avatarInitials(user: UserProfile): String {
-    val source = user.name.takeIf { it.isNotBlank() } ?: user.email
-    if (source.isBlank()) return "?"
-    val parts = source.trim().split(Regex("[ .@]+")).filter { it.isNotBlank() }
-    return when {
-        parts.isEmpty() -> "?"
-        parts.size == 1 -> parts[0].first().uppercase()
-        else -> "${parts[0].first()}${parts[1].first()}".uppercase()
     }
 }
 
@@ -967,16 +948,18 @@ fun shareApp(context: Context) {
 fun SettingScreenPreview() {
     SettingScreenUi(
         navController = androidx.navigation.compose.rememberNavController(),
+        coinState = CoinState(),
+        isWatchingAd = false,
+        securityAdsWatched = 0,
+        premiumTrialAdsWatched = 0,
+        onTryPremiumClick = {},
+        onUnlockSecurityAdsClick = {},
         isLightTheme = true,
         onThemeSelected = {},
         passwordEnabled = true,
         onPasswordToggle = {},
         biometricEnabled = false,
         onBiometricToggle = {},
-        currentUser = null,
-        isSyncing = false,
-        onAccountClick = {},
-        onSyncWithDriveClick = {},
         onShareAppClick = {},
         onRateStoreClick = {},
         onChangeLanguageClick = {},
